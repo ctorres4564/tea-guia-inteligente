@@ -1,0 +1,742 @@
+# PRD — Aplicativo de IA para Orientação de Pais de Crianças com TEA
+
+**Versão:** 1.0
+**Status:** Planejamento Inicial (MVP)
+**Produto:** TEA Guia Inteligente *(nome provisório)*
+
+---
+
+# 1. Visão do Produto
+
+## Resumo
+
+O TEA Guia Inteligente é um aplicativo independente que utiliza Inteligência Artificial combinada com uma base de conhecimento clínica estruturada para responder dúvidas de pais, responsáveis, professores e cuidadores de crianças com Transtorno do Espectro Autista (TEA).
+
+Diferentemente de um chatbot genérico, o sistema não responde apenas com base no conhecimento do modelo de IA. Toda resposta é fundamentada em uma base de conteúdo organizada, revisada por especialistas e passível de atualização contínua.
+
+A IA atua como mecanismo de compreensão da pergunta, recuperação das informações relevantes e geração de uma resposta clara e contextualizada.
+
+---
+
+# 2. Objetivo
+
+Criar uma plataforma confiável para reduzir a insegurança das famílias após o diagnóstico do TEA, oferecendo respostas técnicas em linguagem acessível, disponíveis a qualquer momento.
+
+---
+
+# 3. Problema
+
+Após receber o diagnóstico, pais e responsáveis enfrentam inúmeras dúvidas relacionadas ao desenvolvimento da criança.
+
+As informações disponíveis atualmente estão dispersas em:
+
+* Google
+* YouTube
+* Instagram
+* TikTok
+* Fóruns
+* Blogs
+
+Essas fontes frequentemente apresentam:
+
+* informações conflitantes;
+* ausência de referências científicas;
+* excesso de opiniões pessoais;
+* conteúdos desatualizados.
+
+---
+
+# 4. Solução
+
+Desenvolver um aplicativo que combine:
+
+* Base clínica estruturada;
+* Busca semântica;
+* Inteligência Artificial;
+* Conteúdo revisado por especialistas;
+* Atualizações contínuas.
+
+---
+
+# 5. Público-alvo
+
+## Principal
+
+Pais de crianças com TEA.
+
+## Secundário
+
+* mães;
+* avós;
+* cuidadores;
+* professores;
+* acompanhantes terapêuticos;
+* familiares.
+
+---
+
+# 6. Proposta de Valor
+
+O aplicativo responde perguntas utilizando uma base de conhecimento própria e validada, reduzindo o risco de respostas inconsistentes.
+
+---
+
+# 7. Diferencial Competitivo
+
+| Chatbots Genéricos     | TEA Guia Inteligente               |
+| ---------------------- | ---------------------------------- |
+| Conhecimento geral     | Base clínica própria               |
+| Fontes não controladas | Conteúdo revisado                  |
+| Pode "alucinar"        | Responde a partir da base          |
+| Pouca rastreabilidade  | Referências e histórico de revisão |
+| Respostas variáveis    | Conteúdo padronizado               |
+
+---
+
+# 8. Objetivos de Negócio
+
+## Curto Prazo
+
+Construir um MVP funcional.
+
+---
+
+## Médio Prazo
+
+Validar o produto com famílias e profissionais.
+
+---
+
+## Longo Prazo
+
+Expandir para:
+
+* TDAH;
+* TOD;
+* Deficiência Intelectual;
+* Síndromes genéticas;
+* outros transtornos do neurodesenvolvimento.
+
+---
+
+# 9. Escopo do MVP
+
+## Incluído
+
+* Login
+* Cadastro
+* Chat IA
+* Busca inteligente
+* Biblioteca
+* Histórico
+* Favoritos
+* Categorias
+* Base clínica
+* Painel administrativo
+* Busca semântica
+
+---
+
+## Não incluído
+
+* Teleconsulta
+* Comunidade
+* Marketplace
+* Gamificação
+* Agenda
+* Integração com clínicas
+
+---
+
+# 10. Personas
+
+## Persona 1
+
+### Mariana
+
+32 anos
+
+Mãe
+
+Filho de 4 anos
+
+Recém diagnosticado
+
+Dúvidas frequentes:
+
+* Vai falar?
+* O que é ecolalia?
+* Como estimular em casa?
+
+---
+
+## Persona 2
+
+### Paulo
+
+Professor
+
+Recebeu um aluno autista.
+
+Busca orientações rápidas.
+
+---
+
+## Persona 3
+
+### Avó
+
+Ajuda diariamente no cuidado.
+
+Necessita respostas simples.
+
+---
+
+# 11. Casos de Uso
+
+## UC01
+
+Fazer uma pergunta.
+
+---
+
+## UC02
+
+Pesquisar um assunto.
+
+---
+
+## UC03
+
+Salvar uma resposta.
+
+---
+
+## UC04
+
+Consultar histórico.
+
+---
+
+## UC05
+
+Ler conteúdos organizados.
+
+---
+
+## UC06
+
+Receber conteúdos relacionados.
+
+---
+
+# 12. Fluxo Principal
+
+```text
+Usuário
+
+↓
+
+Digita pergunta
+
+↓
+
+IA interpreta intenção
+
+↓
+
+Busca semântica
+
+↓
+
+Base Clínica
+
+↓
+
+LLM
+
+↓
+
+Resposta estruturada
+
+↓
+
+Referências
+
+↓
+
+Sugestões relacionadas
+```
+
+---
+
+# 13. Arquitetura Geral
+
+```text
+Aplicativo
+
+↓
+
+API
+
+↓
+
+Orquestrador
+
+↓
+
+Embeddings
+
+↓
+
+Banco Vetorial
+
+↓
+
+Base Clínica
+
+↓
+
+LLM
+
+↓
+
+Resposta
+```
+
+---
+
+# 14. Estrutura da Base Clínica
+
+Cada conteúdo será armazenado como uma ficha estruturada.
+
+Campos mínimos:
+
+```yaml
+id
+
+categoria
+
+subcategoria
+
+titulo
+
+pergunta_principal
+
+perguntas_semelhantes
+
+descricao
+
+resposta_curta
+
+resposta_completa
+
+orientacoes
+
+o_que_evitar
+
+quando_procurar_profissional
+
+idade
+
+tags
+
+referencias
+
+especialista
+
+versao
+
+status
+
+data_revisao
+```
+
+---
+
+# 15. Categorias
+
+## Diagnóstico
+
+## Linguagem
+
+## Comunicação
+
+## Comportamento
+
+## Alimentação
+
+## Sono
+
+## Escola
+
+## Inclusão
+
+## Direitos
+
+## Terapias
+
+## Desenvolvimento
+
+## Adolescência
+
+## Vida Adulta
+
+---
+
+# 16. Estrutura das Respostas
+
+Toda resposta seguirá o padrão:
+
+## Resumo
+
+Resposta curta.
+
+---
+
+## Explicação
+
+Texto detalhado.
+
+---
+
+## O que fazer
+
+Lista prática.
+
+---
+
+## O que evitar
+
+Principais erros.
+
+---
+
+## Quando procurar ajuda
+
+Critérios clínicos.
+
+---
+
+## Referências
+
+Artigos.
+
+---
+
+## Conteúdos relacionados
+
+Links internos.
+
+---
+
+# 17. Inteligência Artificial
+
+Pipeline recomendado:
+
+```
+Pergunta
+
+↓
+
+Embeddings
+
+↓
+
+Busca Vetorial
+
+↓
+
+Ranking
+
+↓
+
+LLM
+
+↓
+
+Resposta
+```
+
+O LLM nunca responderá apenas com conhecimento próprio.
+
+Sempre utilizará contexto recuperado da base clínica.
+
+---
+
+# 18. Funcionalidades
+
+## Chat
+
+Perguntas livres.
+
+---
+
+## Busca
+
+Pesquisa por palavras-chave.
+
+---
+
+## Biblioteca
+
+Conteúdo organizado.
+
+---
+
+## Favoritos
+
+Salvar respostas.
+
+---
+
+## Histórico
+
+Perguntas realizadas.
+
+---
+
+## Compartilhar
+
+Enviar respostas.
+
+---
+
+## Avaliar resposta
+
+👍
+
+👎
+
+---
+
+# 19. Painel Administrativo
+
+Cadastro de conteúdos.
+
+Categorias.
+
+Especialistas.
+
+Controle de versões.
+
+Upload de artigos.
+
+Publicação.
+
+Dashboard.
+
+Busca interna.
+
+Logs.
+
+---
+
+# 20. Requisitos Funcionais
+
+### RF01
+
+Permitir cadastro.
+
+---
+
+### RF02
+
+Autenticação.
+
+---
+
+### RF03
+
+Enviar perguntas.
+
+---
+
+### RF04
+
+Buscar na base vetorial.
+
+---
+
+### RF05
+
+Gerar resposta.
+
+---
+
+### RF06
+
+Exibir referências.
+
+---
+
+### RF07
+
+Salvar favoritos.
+
+---
+
+### RF08
+
+Registrar histórico.
+
+---
+
+### RF09
+
+Pesquisar conteúdos.
+
+---
+
+### RF10
+
+Administrar fichas.
+
+---
+
+# 21. Requisitos Não Funcionais
+
+Tempo de resposta inferior a 5 segundos.
+
+Responsividade.
+
+LGPD.
+
+Criptografia.
+
+Backup diário.
+
+Escalabilidade.
+
+Logs.
+
+Observabilidade.
+
+---
+
+# 22. Stack Recomendada
+
+## Front-end
+
+* Flutter (Android/iOS)
+* React (Painel Administrativo)
+
+---
+
+## Back-end
+
+* NestJS
+* Node.js
+
+---
+
+## Banco
+
+* PostgreSQL
+
+---
+
+## Banco Vetorial
+
+* pgvector (MVP)
+* ou Qdrant (escala futura)
+
+---
+
+## IA
+
+* OpenAI
+* Anthropic
+* Gemini
+* OpenRouter
+
+---
+
+## Armazenamento
+
+* Supabase Storage
+* Cloudflare R2
+
+---
+
+## Hospedagem
+
+* Vercel (frontend)
+* Railway ou Render (backend)
+* Supabase (banco)
+
+---
+
+# 23. Segurança
+
+* JWT
+* Refresh Token
+* Rate Limit
+* Auditoria
+* Controle de permissões
+* Criptografia em trânsito e em repouso
+
+---
+
+# 24. Roadmap
+
+## Fase 1
+
+* Chat
+* Base clínica
+* Busca semântica
+* Biblioteca
+* Histórico
+
+---
+
+## Fase 2
+
+* Perfil da criança
+* Respostas personalizadas
+* Checklists
+* Conteúdo multimídia
+* Recomendações inteligentes
+
+---
+
+## Fase 3
+
+* Áudios
+* Vídeos
+* Área para profissionais
+* Atualizações automáticas
+* Integração com clínicas
+
+---
+
+# 25. Métricas de Sucesso (KPIs)
+
+* Usuários cadastrados.
+* Usuários ativos diários (DAU) e mensais (MAU).
+* Retenção em 30 dias.
+* Número médio de perguntas por usuário.
+* Tempo médio por sessão.
+* Taxa de respostas avaliadas como úteis.
+* Tempo médio de resposta.
+* Taxa de conversão para o plano Premium.
+* Número de conteúdos consultados na biblioteca.
+* Cobertura da base clínica (percentual das perguntas respondidas com conteúdo validado).
+
+---
+
+# 26. Riscos e Mitigações
+
+| Risco                                        | Mitigação                                                                                                   |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Respostas desatualizadas                     | Fluxo de revisão periódica por especialistas e versionamento das fichas.                                    |
+| Respostas fora da base clínica               | Implementar RAG com limite de contexto e instruções para o LLM responder apenas com conteúdo recuperado.    |
+| Interpretação de orientação como diagnóstico | Inserir avisos claros de que o aplicativo não substitui avaliação profissional.                             |
+| Escalabilidade da busca                      | Utilizar pgvector no MVP e prever migração para banco vetorial dedicado, se necessário.                     |
+| Custos de IA                                 | Cache de respostas frequentes, limitação de consultas no plano gratuito e monitoramento de uso por usuário. |
+
+---
+
+# 27. Visão de Evolução
+
+A arquitetura deve ser concebida desde o início como uma **plataforma de conhecimento clínico em neurodesenvolvimento**, permitindo que o mesmo núcleo tecnológico seja reutilizado para novas especialidades e públicos. A expansão poderá incluir TDAH, TOD, deficiência intelectual, apraxia de fala, transtornos de aprendizagem e outras áreas da fonoaudiologia e da reabilitação, aproveitando a mesma infraestrutura de base clínica, busca semântica e geração assistida por IA. Isso reduz o custo de evolução e amplia significativamente o potencial de mercado do produto.

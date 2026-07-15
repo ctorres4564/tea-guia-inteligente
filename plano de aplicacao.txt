@@ -1,0 +1,486 @@
+
+
+
+* **TEA Guia Inteligente** → aplicativo para pais e responsáveis.
+
+
+---
+
+# Visão do Produto
+
+## Objetivo
+
+Desenvolver um aplicativo de inteligência artificial especializado em responder dúvidas de pais e responsáveis de crianças com Transtorno do Espectro Autista (TEA), utilizando exclusivamente uma base de conhecimento estruturada, revisada por especialistas e atualizada continuamente.
+
+O aplicativo não realiza diagnósticos nem substitui profissionais de saúde. Sua função é fornecer orientação baseada em evidências, em linguagem acessível.
+
+---
+
+# Diferencial
+
+Hoje, quando um pai faz uma pergunta ao ChatGPT, Gemini ou Claude, a IA responde com base em seu treinamento geral.
+
+Neste aplicativo, a resposta será construída a partir de uma base clínica própria.
+
+Fluxo:
+
+```text
+Pergunta
+
+↓
+
+Classificação da intenção
+
+↓
+
+Busca na Base Clínica
+
+↓
+
+IA organiza a resposta
+
+↓
+
+Resposta personalizada
+
+↓
+
+Referências científicas
+```
+
+A IA deixa de ser a fonte do conhecimento e passa a ser o mecanismo que organiza esse conhecimento.
+
+---
+
+# Público
+
+## Principal
+
+Pais de crianças com TEA
+
+---
+
+## Secundário
+
+Mães
+
+Avós
+
+Cuidadores
+
+Professores
+
+Babás
+
+Familiares
+
+---
+
+# Problema
+
+Após o diagnóstico surgem centenas de dúvidas.
+
+Exemplos:
+
+* Meu filho vai falar?
+* O que significa ecolalia?
+* Como agir durante uma crise?
+* Como funciona a seletividade alimentar?
+* Como escolher uma terapia?
+* Meu filho pode frequentar escola regular?
+* Como estimular linguagem em casa?
+
+Hoje essas respostas estão espalhadas em:
+
+* Google
+* YouTube
+* Instagram
+* TikTok
+* Fóruns
+
+com qualidade muito variável.
+
+---
+
+# Solução
+
+Centralizar todo esse conhecimento em um único aplicativo.
+
+---
+
+# Arquitetura
+
+```text
+APP
+
+↓
+
+Pergunta
+
+↓
+
+Motor de IA
+
+↓
+
+Busca Semântica
+
+↓
+
+Base Clínica
+
+↓
+
+Resposta
+
+↓
+
+Materiais Relacionados
+```
+
+---
+
+# Estrutura da Base Clínica
+
+Cada conhecimento será armazenado como uma ficha estruturada.
+
+## Exemplo
+
+```yaml
+ID:
+
+Categoria:
+Comunicação
+
+Subcategoria:
+Ecolalia
+
+Pergunta Principal:
+O que é ecolalia?
+
+Perguntas semelhantes:
+
+Meu filho repete tudo.
+
+Ele copia o que falamos.
+
+Por que ele só repete frases?
+
+Resposta resumida
+
+Resposta completa
+
+Orientações práticas
+
+O que evitar
+
+Quando procurar ajuda
+
+Faixa etária
+
+Palavras-chave
+
+Referências
+
+Data da revisão
+
+Especialista responsável
+```
+
+Essa estrutura facilita a busca semântica e a manutenção do conteúdo.
+
+---
+
+# Grandes Categorias
+
+## Diagnóstico
+
+* sinais precoces
+* níveis de suporte
+* exames
+* profissionais
+
+---
+
+## Linguagem
+
+* fala
+* comunicação
+* ecolalia
+* CAA
+* PECS
+
+---
+
+## Comportamento
+
+* crises
+* birras
+* rigidez
+* autorregulação
+
+---
+
+## Alimentação
+
+* seletividade
+* mastigação
+* vitaminas
+* suplementos
+
+---
+
+## Sono
+
+* rotina
+* insônia
+* despertares
+
+---
+
+## Escola
+
+* inclusão
+* adaptações
+* professor de apoio
+
+---
+
+## Direitos
+
+* BPC
+* plano de saúde
+* legislação
+* laudos
+
+---
+
+## Terapias
+
+* Fonoaudiologia
+* TO
+* Psicologia
+* ABA
+* Fisioterapia
+
+---
+
+## Desenvolvimento
+
+* brincar
+* autonomia
+* socialização
+* adolescência
+
+---
+
+# Estrutura das Respostas
+
+Todas seguem o mesmo padrão.
+
+## 1. Resposta rápida
+
+Até 100 palavras.
+
+---
+
+## 2. Explicação
+
+Texto mais completo.
+
+---
+
+## 3. O que fazer
+
+Lista prática.
+
+---
+
+## 4. O que evitar
+
+Erros comuns.
+
+---
+
+## 5. Quando procurar ajuda
+
+Critérios objetivos.
+
+---
+
+## 6. Referências
+
+Artigos e diretrizes utilizadas.
+
+---
+
+## 7. Conteúdos relacionados
+
+Links internos.
+
+---
+
+# Inteligência Artificial
+
+A IA identifica:
+
+* assunto
+* idade
+* contexto
+* urgência
+
+Exemplo
+
+Usuário:
+
+> Meu filho de quatro anos não olha quando chamo.
+
+A IA entende:
+
+```text
+Tema:
+Comunicação Social
+
+Idade:
+4 anos
+
+Categoria:
+Sinais Clínicos
+
+Relacionados:
+
+Contato visual
+
+Atenção compartilhada
+
+Resposta ao nome
+
+Diagnóstico
+```
+
+---
+
+# Funcionalidades
+
+## Chat
+
+Principal interface.
+
+---
+
+## Busca
+
+Pesquisar qualquer assunto.
+
+---
+
+## Biblioteca
+
+Conteúdos organizados.
+
+---
+
+## Favoritos
+
+Salvar respostas.
+
+---
+
+## Histórico
+
+Perguntas anteriores.
+
+---
+
+## Conteúdos recomendados
+
+Relacionados à pesquisa.
+
+---
+
+## Perguntas Frequentes
+
+Organizadas por categoria.
+
+---
+
+## Atualizações
+
+Novos conteúdos científicos.
+
+---
+
+# Painel Administrativo
+
+Cadastro de perguntas
+
+Cadastro de respostas
+
+Upload de artigos
+
+Versionamento
+
+Especialistas revisores
+
+Controle de publicação
+
+Categorias
+
+Estatísticas
+
+---
+
+# Modelo de IA
+
+A recomendação técnica é utilizar um pipeline de **RAG (Retrieval-Augmented Generation)**:
+
+1. Vetorização das fichas clínicas.
+2. Busca semântica das mais relevantes.
+3. Reclassificação dos resultados.
+4. Geração da resposta pelo LLM utilizando apenas o contexto recuperado.
+5. Exibição das fontes consultadas.
+
+Isso reduz significativamente respostas imprecisas e facilita auditorias do conteúdo.
+
+---
+
+# Roadmap
+
+## Fase 1 — MVP
+
+* Autenticação
+* Chat
+* Busca semântica
+* Base com 300–500 fichas
+* Biblioteca por categorias
+* Favoritos
+* Histórico
+
+---
+
+## Fase 2
+
+* Perfil da criança (idade, diagnóstico, interesses)
+* Respostas adaptadas ao perfil
+* Checklists interativos
+* Guias para pais
+* Avaliação das respostas pelos usuários
+
+---
+
+## Fase 3
+
+* Conteúdo multimídia (vídeos, infográficos, áudios)
+* Recomendações personalizadas
+* Sistema de notificações
+* Modo offline para conteúdos essenciais
+
+---
+
+## Modelo de monetização
+
+* **Plano Gratuito:** número limitado de perguntas por dia e acesso aos conteúdos básicos.
+* **Plano Premium:** perguntas ilimitadas, biblioteca completa, recursos personalizados e novos conteúdos exclusivos.
+* **Licenciamento B2B:** oferta para clínicas, associações, escolas e operadoras de saúde que desejem disponibilizar o aplicativo para seus usuários.
+
+Essa estrutura permite que o aplicativo evolua de um simples assistente de perguntas para uma plataforma especializada de educação e apoio a famílias de pessoas com TEA, mantendo identidade e modelo de negócios próprios.

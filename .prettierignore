@@ -1,0 +1,5 @@
+node_modules
+.next
+coverage
+firebase/firestore.indexes.json
+package-lock.json

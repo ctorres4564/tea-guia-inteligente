@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// ============================================================================
+// TEA Guia Inteligente — Regras de Segurança do Firebase Storage
+//
+// Estrutura de pastas:
+//   /avatars/{userId}/...    -> leitura pública (avatar), escrita apenas pelo dono
+//   /knowledge/{itemId}/...  -> leitura pública (materiais de conteúdos publicados
+//                                são de interesse público), escrita restrita a
+//                                editores de conteúdo (professional/reviewer/
+//                                administrator), verificado via `firestore.get()`
+//                                consultando `profiles/{uid}.role` no Firestore.
+//   /internal/{...}          -> uso interno/administrativo, nunca público
+//
+// Nota técnica: `firestore.get()`/`firestore.exists()` permitem que as regras
+// do Storage consultem documentos do Firestore do MESMO projeto Firebase
+// (recurso "cross-service security rules"). Isso mantém a fonte única de
+// verdade do papel do usuário em `profiles/{uid}.role`, igual ao que já é
+// feito em `firebase/firestore.rules`.
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAllowedSize() {
+      // Limite de 5 MB por arquivo.
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    function isAllowedImageType() {
+      return request.resource.contentType.matches('image/(png|jpeg|jpg|webp)');
+    }
+
+    function isAllowedDocumentType() {
+      return request.resource.contentType.matches('application/pdf')
+        || request.resource.contentType.matches('image/(png|jpeg|jpg|webp)');
+    }
+
+    function userRole() {
+      return firestore.get(/databases/(default)/documents/profiles/$(request.auth.uid)).data.role;
+    }
+
+    function isContentEditor() {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/profiles/$(request.auth.uid))
+        && userRole() in ['professional', 'reviewer', 'administrator'];
+    }
+
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isAllowedSize() && isAllowedImageType();
+    }
+
+    match /knowledge/{itemId}/{fileName} {
+      allow read: if true;
+      allow write: if isContentEditor() && isAllowedSize() && isAllowedDocumentType();
+      allow delete: if isContentEditor();
+    }
+
+    match /internal/{allPaths=**} {
+      // Reservado para uso administrativo futuro (Admin SDK / painel).
+      // Nenhum acesso direto do cliente é permitido.
+      allow read, write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
