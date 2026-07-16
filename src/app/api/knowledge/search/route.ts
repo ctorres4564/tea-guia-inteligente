@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
+import { searchScientificReferences } from "@/services/scientificSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -288,12 +289,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Busca referências na internet (Europe PMC) se a chave estiver presente e for uma busca textual
+    let externalResults: any[] = [];
+    if (apiKey && q && q.trim().length >= 2) {
+      try {
+        const externalRefs = await searchScientificReferences(q, apiKey);
+        externalResults = externalRefs.map((art, idx) => ({
+          id: `ext-${idx}-${Date.now()}`,
+          title: `[Internet] ${art.title}`,
+          slug: `external-${idx}`,
+          summary: `${art.authors} (${art.year}) - ${art.journal}`,
+          content: art.abstractText,
+          evidenceLevel: "high",
+          targetAudience: ["general"],
+          ageRange: "Todas as idades",
+          similarity: 0.8, // Similaridade mockada para ficar bem posicionado
+          url: art.url,
+          external: true,
+        }));
+      } catch (err) {
+        console.error("Erro ao buscar referências externas para busca do dashboard:", err);
+      }
+    }
+
     // Ordena de forma decrescente pela similaridade e trunca conforme o limite
-    filteredResults.sort((a, b) => b.similarity - a.similarity);
-    filteredResults = filteredResults.slice(0, limit);
+    let combinedResults = [...filteredResults, ...externalResults];
+    combinedResults.sort((a, b) => b.similarity - a.similarity);
+    combinedResults = combinedResults.slice(0, limit);
 
     return NextResponse.json({
-      results: filteredResults,
+      results: combinedResults,
       filtersRelaxed: filtersRelaxed.length > 0 ? filtersRelaxed : undefined
     });
   } catch (error) {

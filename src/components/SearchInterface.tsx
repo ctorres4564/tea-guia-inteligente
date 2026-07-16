@@ -32,6 +32,8 @@ interface SearchResultItem {
   evidenceLevel: "low" | "moderate" | "high" | "expert_consensus";
   targetAudience: string[];
   ageRange?: string;
+  url?: string;
+  external?: boolean;
   tags?: string[];
   similarity: number;
 }
@@ -92,7 +94,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
 
   // Carrega artigos relacionados quando o artigo ativo muda
   useEffect(() => {
-    if (!activeArticle) {
+    if (!activeArticle || activeArticle.external) {
       setRelatedItems([]);
       return;
     }
@@ -493,6 +495,22 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
             <div className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100 dark:border-slate-850">
               {activeArticle.content}
             </div>
+
+            {activeArticle.external && activeArticle.url && (
+              <div className="mt-6 pt-4 border-t border-slate-150 dark:border-slate-800">
+                <a
+                  href={activeArticle.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 transition-colors"
+                >
+                  <span>Acessar Artigo Original na Íntegra</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            )}
 
             {/* Conteúdos Relacionados */}
             <div className="pt-6 pb-8">
