@@ -15,6 +15,66 @@ const SIMILARITY_THRESHOLD = 0.65; // Similaridade de cosseno mínima aceitável
 const RATE_LIMIT_CONFIG = { maxRequests: 40, windowMs: 60_000 };
 
 /**
+ * Helper para verificar se a idade buscada corresponde à faixa etária do item.
+ */
+function matchAge(itemAge: string | undefined | null, searchAge: string): boolean {
+  if (!itemAge) return false;
+
+  const cleanSearch = searchAge.trim().toLowerCase();
+  const cleanItem = itemAge.trim().toLowerCase();
+
+  if (
+    cleanItem.includes("todas") ||
+    cleanItem.includes("qualquer") ||
+    cleanItem.includes("livre") ||
+    cleanItem.includes("todos")
+  ) {
+    return true;
+  }
+
+  const searchNumMatch = cleanSearch.match(/\d+/);
+  if (!searchNumMatch) {
+    return cleanItem.includes(cleanSearch);
+  }
+  const searchNum = parseInt(searchNumMatch[0], 10);
+
+  const rangeMatch = cleanItem.match(/(\d+)\s*(?:a|-)\s*(\d+)/);
+  if (rangeMatch && rangeMatch[1] && rangeMatch[2]) {
+    const min = parseInt(rangeMatch[1], 10);
+    const max = parseInt(rangeMatch[2], 10);
+    return searchNum >= min && searchNum <= max;
+  }
+
+  if (cleanItem.includes("até") || cleanItem.includes("menos de")) {
+    const numMatch = cleanItem.match(/\d+/);
+    if (numMatch) {
+      const limit = parseInt(numMatch[0], 10);
+      return searchNum <= limit;
+    }
+  }
+
+  if (
+    cleanItem.includes("a partir de") ||
+    cleanItem.includes("mais de") ||
+    cleanItem.includes("acima de")
+  ) {
+    const numMatch = cleanItem.match(/\d+/);
+    if (numMatch) {
+      const limit = parseInt(numMatch[0], 10);
+      return searchNum >= limit;
+    }
+  }
+
+  const itemNumMatch = cleanItem.match(/\d+/);
+  if (itemNumMatch) {
+    const itemNum = parseInt(itemNumMatch[0], 10);
+    return searchNum === itemNum;
+  }
+
+  return cleanItem.includes(cleanSearch);
+}
+
+/**
  * Route Handler para busca semântica de fichas clínicas da base de conhecimento.
  * Apenas usuários autenticados e ativos podem pesquisar.
  */
@@ -155,33 +215,87 @@ export async function POST(request: NextRequest) {
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    // 6. Aplica filtros em memória (Pós-filtragem para otimização de índices do Firestore)
-    if (categoryId && typeof categoryId === "string") {
-      results = results.filter((item) => item.categoryId === categoryId);
-    }
+    // 6. Aplica filtros em memória com estratégias de fallback gradual
+    const applyFilters = (
+      items: typeof results,
+      useCategory: boolean,
+      useAudience: boolean,
+      useAge: boolean,
+      minSimilarity: number
+    ) => {
+      let filtered = [...items];
 
-    if (targetAudience && typeof targetAudience === "string") {
-      results = results.filter((item) => {
-        const audiences: string[] = item.targetAudience || [];
-        return audiences.includes(targetAudience);
-      });
-    }
+      if (useCategory && categoryId && typeof categoryId === "string") {
+        filtered = filtered.filter((item) => item.categoryId === categoryId);
+      }
 
-    if (ageRange && typeof ageRange === "string") {
-      results = results.filter((item) => {
-        const itemAge: string = item.ageRange || "";
-        return itemAge.toLowerCase().includes(ageRange.toLowerCase());
-      });
-    }
+      if (useAudience && targetAudience && typeof targetAudience === "string") {
+        filtered = filtered.filter((item) => {
+          const audiences: string[] = item.targetAudience || [];
+          return audiences.includes(targetAudience);
+        });
+      }
 
-    // Filtra pelo limiar mínimo de corte de similaridade
-    results = results.filter((item) => item.similarity >= SIMILARITY_THRESHOLD);
+      if (useAge && ageRange && typeof ageRange === "string") {
+        filtered = filtered.filter((item) => matchAge(item.ageRange, ageRange));
+      }
+
+      filtered = filtered.filter((item) => item.similarity >= minSimilarity);
+      return filtered;
+    };
+
+    // Tenta primeiro com todos os filtros estritamente aplicados
+    let filteredResults = applyFilters(results, true, true, true, SIMILARITY_THRESHOLD);
+    let filtersRelaxed: string[] = [];
+
+    if (filteredResults.length === 0) {
+      // 1. Remove filtro de idade
+      if (ageRange) {
+        filteredResults = applyFilters(results, true, true, false, SIMILARITY_THRESHOLD);
+        if (filteredResults.length > 0) {
+          filtersRelaxed.push("ageRange");
+        }
+      }
+
+      // 2. Remove também o filtro de público-alvo
+      if (filteredResults.length === 0 && targetAudience) {
+        filteredResults = applyFilters(results, true, false, false, SIMILARITY_THRESHOLD);
+        if (filteredResults.length > 0) {
+          filtersRelaxed = ageRange ? ["ageRange", "targetAudience"] : ["targetAudience"];
+        }
+      }
+
+      // 3. Remove também a categoria (busca semântica livre)
+      if (filteredResults.length === 0 && categoryId) {
+        filteredResults = applyFilters(results, false, false, false, SIMILARITY_THRESHOLD);
+        if (filteredResults.length > 0) {
+          filtersRelaxed = [];
+          if (ageRange) filtersRelaxed.push("ageRange");
+          if (targetAudience) filtersRelaxed.push("targetAudience");
+          filtersRelaxed.push("categoryId");
+        }
+      }
+
+      // 4. Reduz similaridade de corte para capturar correspondências mais distantes (0.45)
+      if (filteredResults.length === 0) {
+        filteredResults = applyFilters(results, false, false, false, 0.45);
+        if (filteredResults.length > 0) {
+          filtersRelaxed = ["similarity"];
+          if (ageRange) filtersRelaxed.push("ageRange");
+          if (targetAudience) filtersRelaxed.push("targetAudience");
+          if (categoryId) filtersRelaxed.push("categoryId");
+        }
+      }
+    }
 
     // Ordena de forma decrescente pela similaridade e trunca conforme o limite
-    results.sort((a, b) => b.similarity - a.similarity);
-    results = results.slice(0, limit);
+    filteredResults.sort((a, b) => b.similarity - a.similarity);
+    filteredResults = filteredResults.slice(0, limit);
 
-    return NextResponse.json({ results });
+    return NextResponse.json({
+      results: filteredResults,
+      filtersRelaxed: filtersRelaxed.length > 0 ? filtersRelaxed : undefined
+    });
   } catch (error) {
     logger.error("Erro no Route Handler de busca semântica", { userId }, error);
     const mappedError = mapFirebaseError(error);

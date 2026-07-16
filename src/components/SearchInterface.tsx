@@ -63,6 +63,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
   const [targetAudience, setTargetAudience] = useState("");
   const [ageRange, setAgeRange] = useState("");
   const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [filtersRelaxed, setFiltersRelaxed] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -147,6 +148,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
 
       const searchResults = data.results || [];
       setResults(searchResults);
+      setFiltersRelaxed(data.filtersRelaxed || []);
 
       // Registra a pesquisa no histórico
       if (user && searchResults.length > 0) {
@@ -187,6 +189,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
     setTargetAudience("");
     setAgeRange("");
     setResults([]);
+    setFiltersRelaxed([]);
     setError(null);
     setSearched(false);
   };
@@ -320,6 +323,30 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
         ) : searched ? (
           results.length > 0 ? (
             <div className="flex flex-col gap-4">
+              {filtersRelaxed.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-lg p-4 text-sm text-amber-800 dark:text-amber-300">
+                  <div className="flex gap-2">
+                    <svg className="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                      <span className="font-bold">Busca expandida:</span> Não encontramos artigos aplicando todos os seus filtros. Exibimos conteúdos relevantes removendo as restrições de:{" "}
+                      <span className="font-semibold">
+                        {filtersRelaxed
+                          .map((f) => {
+                            if (f === "ageRange") return "Faixa Etária";
+                            if (f === "targetAudience") return "Público-Alvo";
+                            if (f === "categoryId") return "Categoria";
+                            if (f === "similarity") return "Relevância Mínima";
+                            return f;
+                          })
+                          .join(", ")}
+                      </span>.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center px-1">
                 <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Resultados Encontrados ({results.length})
