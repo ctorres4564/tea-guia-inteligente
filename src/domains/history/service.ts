@@ -3,9 +3,12 @@ import {
   getDocs,
   query,
   addDoc,
+  deleteDoc,
+  doc,
   orderBy,
   serverTimestamp,
   limit,
+  startAfter,
   Timestamp,
 } from "firebase/firestore";
 
@@ -16,13 +19,19 @@ import type { HistoryType } from "@/lib/validation/history.schema";
 import type { KnowledgeItem } from "@/lib/validation/knowledge.schema";
 import { FIRESTORE_COLLECTIONS } from "@/types/firestore";
 
+const HISTORY_MAX_ENTRIES = 30;
+
 const getHistoryCollection = (userId: string) => {
   const db = getFirebaseFirestore();
   return collection(db, FIRESTORE_COLLECTIONS.history, userId, "items");
 };
 
 /**
- * Adiciona uma entrada no histórico do usuário.
+ * Adiciona uma entrada no histórico do usuário e aplica política de retenção.
+ *
+ * Após inserção, verifica se existem entradas além do limite de 30 e as remove.
+ * Isso garante que dados sensíveis de interações não se acumulem indefinidamente,
+ * importante antes da introdução de dados de crianças na Fase 7.
  */
 export async function addHistoryEntry(
   userId: string,
@@ -40,6 +49,37 @@ export async function addHistoryEntry(
       knowledgeItemId: entry.knowledgeItemId ?? null,
       createdAt: serverTimestamp(),
     });
+
+    // Política de retenção: remove entradas além das 30 mais recentes.
+    // Busca a 30ª entrada e usa-a como cursor para deletar o excesso.
+    try {
+      const limitQuery = query(
+        colRef,
+        orderBy("createdAt", "desc"),
+        limit(HISTORY_MAX_ENTRIES)
+      );
+      const limitSnap = await getDocs(limitQuery);
+
+      if (limitSnap.docs.length === HISTORY_MAX_ENTRIES) {
+        const lastDoc = limitSnap.docs[HISTORY_MAX_ENTRIES - 1];
+        const overflowQuery = query(
+          colRef,
+          orderBy("createdAt", "desc"),
+          startAfter(lastDoc)
+        );
+        const overflowSnap = await getDocs(overflowQuery);
+        const db = getFirebaseFirestore();
+        await Promise.all(
+          overflowSnap.docs.map((d) =>
+            deleteDoc(doc(db, FIRESTORE_COLLECTIONS.history, userId, "items", d.id))
+          )
+        );
+      }
+    } catch (cleanupErr) {
+      // Erro de limpeza não deve bloquear o registro da entrada
+      console.warn("Falha ao aplicar política de retenção do histórico:", cleanupErr);
+    }
+
     return docRef.id;
   } catch (error) {
     throw mapFirebaseError(error);

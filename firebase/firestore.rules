@@ -66,19 +66,26 @@ service cloud.firestore {
         && userProfile().role in ['professional', 'reviewer', 'administrator'];
     }
 
-    // Conjunto de campos exclusivamente gravados pelo Admin SDK (publish route).
-    // Nenhum cliente deve gravar esses campos diretamente — qualquer tentativa
-    // é bloqueada pela condição affectedKeys abaixo.
-    // Nota: 'version' é gerenciado por service.ts (increment), mas via SDK
-    // cliente — portanto não entra aqui; somente campos do ciclo de publicação.
+    // Campos exclusivamente gravados pelo Admin SDK (publish route e update route).
+    // Nenhum cliente deve gravar esses campos diretamente.
+    // Nota: reviewedBy NÃO está aqui porque approveKnowledgeItem e rejectKnowledgeItem
+    // o escrevem legitimamente pelo SDK do cliente durante transições de revisão.
+    // A proteção de reviewedBy é feita separadamente abaixo (apenas isReviewer()).
     function adminOnlyFields() {
-      return ['embedding', 'embeddingVersion', 'reviewedBy', 'publishedAt'];
+      return ['embedding', 'embeddingVersion', 'publishedAt'];
     }
 
     // Retorna true se a escrita não toca em nenhum campo reservado ao Admin SDK.
     function doesNotTouchAdminFields() {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(adminOnlyFields());
+    }
+
+    // reviewedBy só pode ser alterado por revisores/administradores.
+    // Um 'professional' não pode autopromover ou manipular quem revisou o item.
+    function reviewedByIsUnchangedOrIsReviewer() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewedBy'])
+        || isReviewer();
     }
 
     // ------------------------------------------------------------------
@@ -145,25 +152,31 @@ service cloud.firestore {
       allow create: if isContentEditor()
         && request.resource.data.reviewStatus == 'draft'
         && request.resource.data.deletedAt == null
-        // Campos de publicação não podem existir na criação (são gravados pelo Admin SDK)
+        // Campos de publicação (embedding, embeddingVersion, publishedAt)
+        // não podem existir na criação — só o Admin SDK os grava.
+        // reviewedBy e version podem ser omitidos (não são inicializados no cliente).
         && !request.resource.data.keys().hasAny(adminOnlyFields());
 
       allow update: if isContentEditor()
-        // 1. Campos de publicação (embedding, embeddingVersion, reviewedBy, publishedAt)
-        //    são imutáveis pelo cliente SDK — só o Admin SDK (publish route) os grava.
+        // 1. Campos de publicação (embedding, embeddingVersion, publishedAt)
+        //    são imutáveis pelo cliente SDK — só o Admin SDK os grava.
         && doesNotTouchAdminFields()
-        // 2. createdBy é imutável após criação.
+        // 2. reviewedBy só pode ser alterado por revisores/administradores
+        //    (escrito durante approve/reject — nunca por um professional).
+        && reviewedByIsUnchangedOrIsReviewer()
+        // 3. createdBy é imutável após criação.
         && (
           !('createdBy' in request.resource.data)
           || request.resource.data.createdBy == resource.data.createdBy
         )
-        // 3. Exclusão lógica (deletedAt) é restrita a administradores.
+        // 4. Exclusão lógica (deletedAt) é restrita a administradores.
         && (
           request.resource.data.deletedAt == resource.data.deletedAt || isAdmin()
         )
-        // 4. Proteção de conteúdo publicado ou aprovado:
+        // 5. Proteção de conteúdo publicado ou aprovado:
         //    apenas reviewer/admin podem editar campos de um item já aprovado ou publicado.
-        //    Isso impede que um 'professional' altere conteúdo clínico sem nova revisão.
+        //    Na prática, edições de publicados passam pela rota /api/admin/knowledge/update
+        //    (Admin SDK), que força o retorno a in_review automaticamente.
         && (
           resource.data.reviewStatus in ['draft', 'in_review']
           || isReviewer()

@@ -9,6 +9,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     css: false,
+    // Restringe o Vitest apenas a src/ — arquivos firebase/test/*.mjs
+    // são scripts Node standalone que requerem o Emulator ativo e devem
+    // ser executados com: npm run test:rules  ou  npm run test:storage
+    include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

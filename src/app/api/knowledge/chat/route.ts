@@ -10,6 +10,31 @@ import { knowledgeItemSchema } from "@/lib/validation/knowledge.schema";
 
 const SIMILARITY_THRESHOLD = 0.65;
 
+// Rate limit simples em memória: 20 requisições por minuto por usuário.
+// Em ambientes multi-instância (ex.: Vercel serverless) não é perfeito,
+// mas oferece proteção básica contra uso excessivo em instância única.
+// Para rate limit distribuído, migrar para Redis ou Firestore (ROADMAP).
+const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkAndIncrementRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(userId, { count: 1, windowStart: now });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+
+  entry.count++;
+  return true;
+}
+
 // Instrução básica de sistema para blindagem do LLM e disclaimer clínico
 const SYSTEM_INSTRUCTION_BASE = `Você é o assistente virtual especializado do aplicativo "TEA Guia Inteligente".
 Sua principal função é responder perguntas de pais, educadores e profissionais sobre o Transtorno do Espectro Autista (TEA) baseando-se ESTREITAMENTE no contexto de fichas clínicas fornecido abaixo.
@@ -54,6 +79,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Acesso negado. É necessário estar autenticado e com conta ativa para usar o assistente de IA." },
         { status: 401 }
+      );
+    }
+
+    // 1b. Rate limit: 20 requisições por minuto por usuário
+    const { sessionUser } = activeSession;
+    if (!checkAndIncrementRateLimit(sessionUser.uid)) {
+      return NextResponse.json(
+        { error: "Limite de requisições excedido. Aguarde 1 minuto antes de enviar uma nova mensagem." },
+        { status: 429 }
       );
     }
 
@@ -222,35 +256,58 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Timeout de 30 segundos para o stream: evita conexões presas e custo
-    // descontrolado de Gemini em caso de resposta muito longa ou lentidão da API.
+    // Timeout efetivo de 30 segundos: usa flag streamClosed + setTimeout que
+    // fecha o controller diretamente. Diferente do AbortController anterior
+    // (que apenas sinalizava mas não interrompia o loop for-await), aqui o
+    // timeout fecha o ReadableStreamDefaultController, o que encerra o stream
+    // imediatamente para o cliente.
     const STREAM_TIMEOUT_MS = 30_000;
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
-
-    // Converte o stream do Gemini para um ReadableStream HTTP
     const encoder = new TextEncoder();
+    let streamClosed = false;
+
     const stream = new ReadableStream({
       async start(controller) {
-        try {
-          for await (const chunk of responseStream) {
-            // Se o timeout disparou, encerra o stream graciosamente
-            if (abortController.signal.aborted) {
+        const timeoutId = setTimeout(() => {
+          if (!streamClosed) {
+            streamClosed = true;
+            try {
               controller.enqueue(
                 encoder.encode("\n\n[AVISO: A resposta foi interrompida por tempo limite. Tente uma pergunta mais específica.]")
               );
-              break;
+              controller.close();
+            } catch {
+              // controller pode já ter sido fechado em uma condição de corrida
             }
+          }
+        }, STREAM_TIMEOUT_MS);
+
+        try {
+          for await (const chunk of responseStream) {
+            // Se o timeout disparou e fechou o controller, para imediatamente
+            if (streamClosed) break;
             if (chunk.text) {
               controller.enqueue(encoder.encode(chunk.text));
             }
           }
         } catch (err) {
           console.error("Erro durante o processamento do stream do Gemini:", err);
-          controller.enqueue(encoder.encode("\n[ERRO: Conexão interrompida com o serviço de IA.]"));
+          if (!streamClosed) {
+            try {
+              controller.enqueue(encoder.encode("\n[ERRO: Conexão interrompida com o serviço de IA.]"));
+            } catch {
+              // controller já fechado
+            }
+          }
         } finally {
           clearTimeout(timeoutId);
-          controller.close();
+          if (!streamClosed) {
+            streamClosed = true;
+            try {
+              controller.close();
+            } catch {
+              // já fechado
+            }
+          }
         }
       },
     });

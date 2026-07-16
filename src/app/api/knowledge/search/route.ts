@@ -96,11 +96,21 @@ export async function POST(request: NextRequest) {
       .where("reviewStatus", "==", "published")
       .where("deletedAt", "==", null);
 
-    // Buscamos um número maior de itens para permitir filtragem em memória no servidor
+    // Buscamos uma janela KNN maior que o limite final para compensar a perda
+    // pela pós-filtragem em memória (categoria, público-alvo, faixa etária).
+    //
+    // Risco documentado: com muitos filtros combinados, mesmo a janela ampliada
+    // pode retornar vazio se os itens mais semânticos não corresponderem aos filtros.
+    // Mitigação futura: usar composite indexes no Firestore para pré-filtrar antes
+    // do KNN (requer reestruturação de índices — ver ROADMAP Fase 7+).
+    //
+    // Janela escolhida: Math.max(50, limit * 5)
+    //   - Sem filtros: 50 itens candidatos para selecionar os melhores `limit`
+    //   - Com filtros: a janela absorve ~80% de descarte e ainda retorna resultados
     const vectorQuery = queryBase.findNearest({
       vectorField: "embedding",
       queryVector: FieldValue.vector(queryEmbedding),
-      limit: Math.max(30, limit * 3),
+      limit: Math.max(50, limit * 5),
       distanceMeasure: "COSINE",
       distanceResultField: "searchDistance",
     });

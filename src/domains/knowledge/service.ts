@@ -9,7 +9,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   orderBy,
   query,
   serverTimestamp,
@@ -93,6 +92,9 @@ export async function createKnowledgeItem(
 ): Promise<string> {
   try {
     const firestore = getFirebaseFirestore();
+    // publishedAt e reviewedBy são omitidos intencionalmente:
+    // só existem após a publicação/revisão e são gravados exclusivamente
+    // pelo Admin SDK (rota /api/admin/knowledge/publish).
     const docRef = await addDoc(collection(firestore, COLLECTION), {
       categoryId: input.categoryId,
       title: input.title,
@@ -105,9 +107,7 @@ export async function createKnowledgeItem(
       evidenceLevel: input.evidenceLevel,
       reviewStatus: "draft",
       version: 1,
-      publishedAt: null,
       createdBy: authorUid,
-      reviewedBy: null,
       deletedAt: null,
       attachments: [],
       createdAt: serverTimestamp(),
@@ -120,31 +120,36 @@ export async function createKnowledgeItem(
 }
 
 /**
- * Atualiza os campos de CONTEÚDO de uma ficha (título, resumo, texto,
- * público-alvo, tags etc.) e incrementa `version` automaticamente — toda
- * edição de conteúdo gera uma nova versão, conforme a modelagem definida
- * em `docs/architecture/firestore-model.md`.
+ * Atualiza os campos de CONTEÚDO de uma ficha via rota de servidor segura.
  *
- * Não altera `reviewStatus` — use `submitForReview`/`approveKnowledgeItem`/
- * `publishKnowledgeItem`/`rejectKnowledgeItem` para transições de revisão.
+ * Não escreve diretamente no Firestore: delega ao Admin SDK via
+ * `/api/admin/knowledge/update`, que:
+ * - invalida o embedding (embeddingVersion: 0)
+ * - se o item estiver publicado ou aprovado, força retorno a 'in_review'
+ * - incrementa `version`
+ *
+ * Não altera `reviewStatus` diretamente — use `submitForReview`/
+ * `approveKnowledgeItem`/`publishKnowledgeItem`/`rejectKnowledgeItem`
+ * para transições de revisão.
  */
 export async function updateKnowledgeItemContent(
   id: string,
   patch: Partial<KnowledgeItemFormInput>,
 ): Promise<void> {
   try {
-    const firestore = getFirebaseFirestore();
-    await updateDoc(doc(firestore, COLLECTION, id), {
-      ...patch,
-      version: increment(1),
-      updatedAt: serverTimestamp(),
-      // Invalida o embedding: qualquer edição de conteúdo desatualiza o vetor
-      // semântico existente. A próxima publicação via Admin SDK (publish route)
-      // regenera o embedding e grava embeddingVersion: 1.
-      embeddingVersion: 0,
+    const res = await fetch("/api/admin/knowledge/update", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, patch }),
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Erro ao salvar o conteúdo (HTTP ${res.status}).`);
+    }
   } catch (error) {
-    throw mapFirebaseError(error);
+    if (error instanceof Error) throw error;
+    throw new Error("Erro desconhecido ao tentar salvar o conteúdo.");
   }
 }
 

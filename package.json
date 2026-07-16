@@ -15,6 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:firebase": "node firebase/test/firebase-admin-smoke.mjs",
+    "test:rules": "node firebase/test/firestore-rules.test.mjs",
+    "test:storage": "node firebase/test/storage-rules.test.mjs",
     "firebase:emulators": "firebase emulators:start",
     "firebase:seed": "node firebase/seed/seed.mjs"
   },
@@ -32,6 +34,8 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "6.4.8",
     "@testing-library/react": "16.0.0",
     "@types/node": "20.14.15",
