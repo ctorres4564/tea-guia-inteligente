@@ -48,10 +48,18 @@ service firebase.storage {
       return firestore.get(/databases/(default)/documents/profiles/$(request.auth.uid)).data.role;
     }
 
+    function userStatus() {
+      return firestore.get(/databases/(default)/documents/profiles/$(request.auth.uid)).data.status;
+    }
+
+    // isContentEditor exige papel editorial E conta ativa.
+    // Uma conta bloqueada/inativa com papel editorial não pode
+    // enviar nem remover anexos de conteúdos clínicos.
     function isContentEditor() {
       return isSignedIn()
         && firestore.exists(/databases/(default)/documents/profiles/$(request.auth.uid))
-        && userRole() in ['professional', 'reviewer', 'administrator'];
+        && userRole() in ['professional', 'reviewer', 'administrator']
+        && userStatus() == 'active';
     }
 
     match /avatars/{userId}/{fileName} {

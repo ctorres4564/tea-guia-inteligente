@@ -222,12 +222,25 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Timeout de 30 segundos para o stream: evita conexões presas e custo
+    // descontrolado de Gemini em caso de resposta muito longa ou lentidão da API.
+    const STREAM_TIMEOUT_MS = 30_000;
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), STREAM_TIMEOUT_MS);
+
     // Converte o stream do Gemini para um ReadableStream HTTP
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         try {
           for await (const chunk of responseStream) {
+            // Se o timeout disparou, encerra o stream graciosamente
+            if (abortController.signal.aborted) {
+              controller.enqueue(
+                encoder.encode("\n\n[AVISO: A resposta foi interrompida por tempo limite. Tente uma pergunta mais específica.]")
+              );
+              break;
+            }
             if (chunk.text) {
               controller.enqueue(encoder.encode(chunk.text));
             }
@@ -236,6 +249,7 @@ export async function POST(request: NextRequest) {
           console.error("Erro durante o processamento do stream do Gemini:", err);
           controller.enqueue(encoder.encode("\n[ERRO: Conexão interrompida com o serviço de IA.]"));
         } finally {
+          clearTimeout(timeoutId);
           controller.close();
         }
       },

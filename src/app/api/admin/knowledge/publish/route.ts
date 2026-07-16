@@ -64,6 +64,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Impede bypass do fluxo editorial: apenas itens formalmente aprovados
+    // (reviewStatus === "approved") podem ser publicados. Publicar um rascunho
+    // ou item em revisão diretamente — mesmo via Admin SDK — é proibido para
+    // garantir que nenhum conteúdo clínico não revisado seja exposto ao público.
+    if (data.reviewStatus !== "approved") {
+      return NextResponse.json(
+        {
+          error: `Publicação negada: o item está com status "${data.reviewStatus}". Apenas itens com status "approved" podem ser publicados.`,
+        },
+        { status: 409 }
+      );
+    }
+
     // 4. Concatena os textos clínicos para a geração de embeddings
     const title = data.title || "";
     const summary = data.summary || "";

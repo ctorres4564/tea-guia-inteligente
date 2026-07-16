@@ -33,28 +33,52 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
     }
 
+    function profileExists() {
+      return exists(/databases/$(database)/documents/profiles/$(request.auth.uid));
+    }
+
     function hasRole(role) {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && profileExists()
         && userProfile().role == role;
-    }
-
-    function isAdmin() {
-      return hasRole('administrator');
-    }
-
-    function isReviewer() {
-      return hasRole('reviewer') || isAdmin();
-    }
-
-    function isContentEditor() {
-      return hasRole('professional') || hasRole('reviewer') || isAdmin();
     }
 
     function isActiveAccount() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/profiles/$(request.auth.uid))
+        && profileExists()
         && userProfile().status == 'active';
+    }
+
+    function isAdmin() {
+      return isActiveAccount() && userProfile().role == 'administrator';
+    }
+
+    function isReviewer() {
+      return isActiveAccount()
+        && userProfile().role in ['reviewer', 'administrator'];
+    }
+
+    // isContentEditor agora exige TANTO papel editorial QUANTO conta ativa.
+    // Uma conta bloqueada ou inativa com papel 'professional' ou 'reviewer'
+    // não pode criar, editar nem excluir conteúdos ou categorias via SDK.
+    function isContentEditor() {
+      return isActiveAccount()
+        && userProfile().role in ['professional', 'reviewer', 'administrator'];
+    }
+
+    // Conjunto de campos exclusivamente gravados pelo Admin SDK (publish route).
+    // Nenhum cliente deve gravar esses campos diretamente — qualquer tentativa
+    // é bloqueada pela condição affectedKeys abaixo.
+    // Nota: 'version' é gerenciado por service.ts (increment), mas via SDK
+    // cliente — portanto não entra aqui; somente campos do ciclo de publicação.
+    function adminOnlyFields() {
+      return ['embedding', 'embeddingVersion', 'reviewedBy', 'publishedAt'];
+    }
+
+    // Retorna true se a escrita não toca em nenhum campo reservado ao Admin SDK.
+    function doesNotTouchAdminFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(adminOnlyFields());
     }
 
     // ------------------------------------------------------------------
@@ -100,13 +124,18 @@ service cloud.firestore {
     //   draft  ──► in_review  (professional, reviewer, administrator)
     //   in_review ──► draft   (professional, reviewer, administrator)
     //   in_review ──► approved (reviewer, administrator)
-    //   approved ──► published (reviewer, administrator)
+    //   approved ──► published (reviewer, administrator) ← via Admin SDK somente
     //   approved ──► rejected  (reviewer, administrator)
     //   published ──► rejected (reviewer, administrator)
-    //   * → qualquer transição de/para 'deleted' é feita via deletedAt (admin)
     //
-    // Campos imutáveis após criação: createdBy, embeddingVersion requer
-    // invalidação explícita via Admin SDK (publish route).
+    // Proteção de integridade:
+    //   - Conteúdo 'published' ou 'approved' só pode ser editado por reviewer/admin.
+    //     Um 'professional' não pode alterar texto ou metadados de um item publicado.
+    //   - Campos do ciclo de publicação (embedding, embeddingVersion, reviewedBy,
+    //     publishedAt) só podem ser escritos pelo Admin SDK — bloqueados aqui via
+    //     doesNotTouchAdminFields().
+    //   - createdBy é imutável após criação.
+    //   - deletedAt só pode ser alterado por administradores.
     // ------------------------------------------------------------------
     match /knowledgeItems/{itemId} {
       // Conteúdo publicado é público; rascunhos/em revisão só para papéis autorizados.
@@ -115,31 +144,37 @@ service cloud.firestore {
 
       allow create: if isContentEditor()
         && request.resource.data.reviewStatus == 'draft'
-        && request.resource.data.deletedAt == null;
+        && request.resource.data.deletedAt == null
+        // Campos de publicação não podem existir na criação (são gravados pelo Admin SDK)
+        && !request.resource.data.keys().hasAny(adminOnlyFields());
 
-      // Edição com máquina de estados e proteção de campos imutáveis.
       allow update: if isContentEditor()
-        // 1. Campos imutáveis nunca podem ser alterados por nenhum editor de conteúdo:
-        //    createdBy preserva a autoria original; publishedAt e reviewedBy só são
-        //    escritos pela rota de publicação (Admin SDK, fora das regras de cliente).
+        // 1. Campos de publicação (embedding, embeddingVersion, reviewedBy, publishedAt)
+        //    são imutáveis pelo cliente SDK — só o Admin SDK (publish route) os grava.
+        && doesNotTouchAdminFields()
+        // 2. createdBy é imutável após criação.
         && (
           !('createdBy' in request.resource.data)
           || request.resource.data.createdBy == resource.data.createdBy
         )
-        // 2. Exclusão lógica (deletedAt) é restrita a administradores.
+        // 3. Exclusão lógica (deletedAt) é restrita a administradores.
         && (
           request.resource.data.deletedAt == resource.data.deletedAt || isAdmin()
         )
-        // 3. Máquina de estados: transições permitidas por papel.
-        //    professional pode mover entre draft ↔ in_review (submissão e retorno).
-        //    reviewer/admin podem aprovar, publicar, rejeitar.
-        //    Ninguém pode mover published/rejected → draft/in_review via cliente.
+        // 4. Proteção de conteúdo publicado ou aprovado:
+        //    apenas reviewer/admin podem editar campos de um item já aprovado ou publicado.
+        //    Isso impede que um 'professional' altere conteúdo clínico sem nova revisão.
         && (
-          // Se o status não muda, qualquer contentEditor pode editar campos de conteúdo.
+          resource.data.reviewStatus in ['draft', 'in_review']
+          || isReviewer()
+        )
+        // 5. Máquina de estados: transições permitidas por papel.
+        && (
+          // Sem mudança de status: respeita restrição do item 4 acima.
           request.resource.data.reviewStatus == resource.data.reviewStatus
-          // draft → in_review: qualquer editor (submissão para revisão)
+          // draft → in_review: qualquer editor com conta ativa
           || (resource.data.reviewStatus == 'draft' && request.resource.data.reviewStatus == 'in_review')
-          // in_review → draft: qualquer editor (retorno para rascunho)
+          // in_review → draft: qualquer editor com conta ativa
           || (resource.data.reviewStatus == 'in_review' && request.resource.data.reviewStatus == 'draft')
           // Transições de revisão: apenas reviewer/admin
           || (
@@ -147,12 +182,12 @@ service cloud.firestore {
             && (
               // in_review → approved
               (resource.data.reviewStatus == 'in_review' && request.resource.data.reviewStatus == 'approved')
-              // approved → published
-              || (resource.data.reviewStatus == 'approved' && request.resource.data.reviewStatus == 'published')
-              // approved → rejected
+              // approved → rejected (rejeição antes de publicar)
               || (resource.data.reviewStatus == 'approved' && request.resource.data.reviewStatus == 'rejected')
               // published → rejected (despublicação)
               || (resource.data.reviewStatus == 'published' && request.resource.data.reviewStatus == 'rejected')
+              // Nota: approved → published só ocorre via Admin SDK (publish route)
+              // e portanto não aparece aqui — o SDK client não pode gravar 'published'.
             )
           )
         );
@@ -173,7 +208,7 @@ service cloud.firestore {
     // favorites/{userId}/items/{favoriteId}
     //
     // Validação estrutural:
-    //   - create: knowledgeItemId (string, não vazia), createdAt (timestamp)
+    //   - create: knowledgeItemId (string, não vazia), createdAt (timestamp server)
     //   - update: não permitido (favoritos são imutáveis após criação)
     //   - delete: apenas o dono da conta ativa
     // ------------------------------------------------------------------
@@ -185,8 +220,8 @@ service cloud.firestore {
         // knowledgeItemId deve ser uma string não vazia
         && request.resource.data.knowledgeItemId is string
         && request.resource.data.knowledgeItemId.size() > 0
-        // createdAt deve existir
-        && 'createdAt' in request.resource.data
+        // createdAt deve ser um timestamp de servidor (não string, não número)
+        && request.resource.data.createdAt is timestamp
         // Apenas os campos permitidos — sem campos arbitrários
         && request.resource.data.keys().hasOnly(['knowledgeItemId', 'createdAt']);
 
@@ -200,8 +235,8 @@ service cloud.firestore {
     // history/{userId}/items/{historyId}
     //
     // Validação estrutural:
-    //   - create: type (em ['search','question','view']), createdAt, query (string ≤ 500),
-    //             knowledgeItemId (string ou null, opcional)
+    //   - create: type (em ['search','question','view']), createdAt (timestamp),
+    //             query (string ≤ 500), knowledgeItemId (string ou ausente)
     //   - update: não permitido (histórico é imutável)
     //   - delete: apenas o dono da conta ativa
     // ------------------------------------------------------------------
@@ -215,8 +250,13 @@ service cloud.firestore {
         // query deve ser string e não pode exceder 500 caracteres
         && request.resource.data.query is string
         && request.resource.data.query.size() <= 500
-        // createdAt deve existir
-        && 'createdAt' in request.resource.data
+        // createdAt deve ser um timestamp de servidor
+        && request.resource.data.createdAt is timestamp
+        // knowledgeItemId, se presente, deve ser string
+        && (
+          !('knowledgeItemId' in request.resource.data)
+          || request.resource.data.knowledgeItemId is string
+        )
         // Apenas os campos permitidos — sem campos arbitrários
         && request.resource.data.keys().hasOnly(['type', 'query', 'knowledgeItemId', 'createdAt']);
 
