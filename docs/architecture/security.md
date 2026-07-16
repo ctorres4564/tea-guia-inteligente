@@ -31,7 +31,13 @@ Resumo:
 - `children/{userId}/profiles/{childId}` (Fase 7): acesso restrito ao
   próprio responsável — **sem exceção para `administrator`**, diferente
   de todas as demais coleções desta seção. Dado de saúde de uma criança
-  (ver ADR-005).
+  (ver ADR-005). Desde a Fase 8, também alimenta a busca de recomendações
+  personalizadas — sem sair do servidor, sem exceção de acesso adicional
+  (ver ADR-006, Decisão 1).
+- `notifications/{notificationId}` (Fase 8): leitura liberada a qualquer
+  conta com `status == "active"`; escrita bloqueada no cliente — apenas o
+  Admin SDK grava, ao publicar um conteúdo. Contém só metadado público de
+  conteúdo já publicado, nenhum dado pessoal (ver ADR-006, Decisão 2).
 
 ## Papéis (roles)
 
@@ -91,9 +97,11 @@ Dados pessoais tratados: nome completo, e-mail, papel e status de conta
 (coleção `profiles`). Desde a Fase 7, também dado de saúde de uma criança
 (status diagnóstico, nível de suporte) na coleção `children/{userId}/
 profiles` — tratado com controles adicionais: acesso restrito ao titular
-da conta sem exceção administrativa, uso exclusivo para calibração de tom
-do assistente de IA, nunca usado para diagnóstico nem enviado a serviços
-além do provedor do LLM (ver ADR-005). Recomendações para fases futuras:
+da conta sem exceção administrativa, uso para calibração de tom do
+assistente de IA e, desde a Fase 8, para a busca vetorial de recomendações
+personalizadas — em ambos os casos nunca usado para diagnóstico nem
+enviado a serviços além do provedor do LLM já autorizado (ver ADR-005 e
+ADR-006). Recomendações para fases futuras:
 
 - Política de privacidade e termos de uso acessíveis publicamente antes
   do cadastro (nesta fase, o cadastro já exige aceite explícito de uma

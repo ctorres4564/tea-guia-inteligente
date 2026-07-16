@@ -81,11 +81,25 @@ conhecimento completa também permanece fora de escopo.
 - Acesso ao perfil da criança restrito estritamente ao próprio responsável,
   sem exceção administrativa
 
-## Fase 8 — Conteúdo Inteligente
+## Fase 8 — Conteúdo Inteligente ✅ (implementada)
 
-- Recomendações personalizadas
-- Conteúdos relacionados automáticos
-- Notificações de novos conteúdos
+- Recomendações personalizadas no dashboard (`/api/knowledge/recommendations`):
+  busca vetorial a partir de interesses, sensibilidades e nível de suporte
+  do(s) perfil(is) de criança cadastrado(s), com fallback para conteúdo
+  publicado recente quando não há perfil — ver
+  `docs/decisions/ADR-006-recommendations-and-notifications.md` (amplia o
+  uso do perfil da criança previsto na ADR-005).
+- Conteúdos relacionados automáticos (`/api/knowledge/related`): busca por
+  similaridade a partir do embedding do próprio artigo, com fallback por
+  tags em comum quando o artigo ainda não possui embedding.
+- Notificações de novos conteúdos: coleção `notifications` (leitura
+  liberada a qualquer conta ativa, escrita somente via Admin SDK),
+  populada automaticamente na publicação de um conteúdo
+  (`/api/admin/knowledge/publish`); estado de "lida"/"não lida" mantido
+  no `localStorage` do navegador (não sincroniza entre dispositivos —
+  ver ADR-006).
+- Painel `DashboardInsights` no dashboard inicial, reunindo recomendações
+  e novidades.
 
 ## Fase 9 — Escalabilidade e Observabilidade
 

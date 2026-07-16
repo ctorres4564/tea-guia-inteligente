@@ -5,6 +5,31 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.5.0] - 2026-07-16
+
+### Adicionado
+- Recomendações personalizadas no dashboard (Fase 8):
+  `/api/knowledge/recommendations` gera uma busca vetorial a partir dos
+  interesses, sensibilidades e nível de suporte do(s) perfil(is) de
+  criança cadastrado(s) (pós-filtrada por público-alvo e faixa etária),
+  com fallback para os conteúdos publicados mais recentes quando não há
+  perfil cadastrado.
+- Conteúdos relacionados automáticos: `/api/knowledge/related` busca por
+  similaridade vetorial a partir do embedding do próprio artigo, com
+  fallback por tags em comum quando o artigo não possui embedding.
+- Notificações de novos conteúdos: nova coleção `notifications` (leitura
+  liberada a qualquer conta ativa, escrita restrita ao Admin SDK),
+  criada automaticamente ao publicar um conteúdo
+  (`/api/admin/knowledge/publish`).
+- Componente `DashboardInsights` no dashboard inicial, exibindo
+  recomendações e um feed de novidades em tempo real (`onSnapshot`).
+- `docs/decisions/ADR-006-recommendations-and-notifications.md`,
+  incluindo a reavaliação do ponto 4 da ADR-005 (uso do perfil da
+  criança agora também alimenta a busca de recomendações, além da
+  personalização de tom do chat).
+- Testes das novas rotas (`recommendations`, `related`) e das regras da
+  coleção `notifications`.
+
 ## [0.4.0] - 2026-07-16
 
 ### Adicionado

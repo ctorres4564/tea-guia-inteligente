@@ -68,3 +68,12 @@ titular.
 - Exclusão de conta (funcionalidade ainda não implementada) deve remover
   também as subcoleções `children/{userId}/profiles/**` — registrado como
   pendência para quando o fluxo de exclusão de conta for implementado.
+
+## Atualização — Fase 8
+
+O ponto 4 desta ADR foi reavaliado e amplamente superado pela
+[[ADR-006-recommendations-and-notifications]]: o perfil da criança agora
+também alimenta a busca vetorial de recomendações personalizadas (não
+apenas a calibração de tom do chat). Os demais pontos desta ADR
+permanecem em vigor. Ver ADR-006, Decisão 1, para a justificativa
+detalhada.

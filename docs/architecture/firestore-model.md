@@ -130,9 +130,33 @@ próprio responsável, sem exceção administrativa — ver
 | createdAt            | timestamp                                                                        |
 | updatedAt            | timestamp                                                                        |
 
-Usado apenas para personalizar o tom das respostas do assistente de IA
-(`/api/knowledge/chat`) — nunca para diagnóstico, nunca lido por outra
-conta.
+Usado para personalizar o tom das respostas do assistente de IA
+(`/api/knowledge/chat`) e, desde a Fase 8, para alimentar a busca vetorial
+de recomendações personalizadas (`/api/knowledge/recommendations`) — nunca
+para diagnóstico, nunca lido por outra conta, nunca persistido fora de
+`children/**` (ver `docs/decisions/ADR-005-child-profile-privacy.md` e
+`docs/decisions/ADR-006-recommendations-and-notifications.md`).
+
+### `notifications/{notificationId}` (Fase 8)
+
+Coleção global e rasa, sem escopo por usuário — ver
+`docs/decisions/ADR-006-recommendations-and-notifications.md` (Decisão 2).
+Criada automaticamente pelo servidor ao publicar um conteúdo
+(`/api/admin/knowledge/publish`).
+
+| Campo         | Tipo                                    |
+| -------------- | ---------------------------------------- |
+| type           | `new_content`                            |
+| title          | string                                   |
+| summary        | string (título do conteúdo publicado)    |
+| contentId      | string (referência lógica a `knowledgeItems`) |
+| contentSlug    | string                                   |
+| createdAt      | timestamp                                |
+
+Leitura liberada a qualquer conta ativa; escrita bloqueada no cliente
+(somente Admin SDK). Não contém dado pessoal ou de perfil de criança. O
+estado de "lida"/"não lida" por usuário é mantido no `localStorage` do
+navegador, não no Firestore (limitação documentada na ADR-006, Decisão 3).
 
 ## Versionamento (Fase 2)
 
@@ -154,6 +178,7 @@ são lógicas e devem ser validadas na camada de aplicação (Zod + regras):
 - `history/{userId}/items/{id}.knowledgeItemId` → `knowledgeItems/{id}`
 - `knowledgeItems.createdBy` / `.reviewedBy` → `profiles/{uid}`
 - `children/{userId}/profiles/{id}` → escopo lógico de `profiles/{userId}` (não referenciado por outras coleções)
+- `notifications/{id}.contentId` → `knowledgeItems/{id}` (referência lógica; sem subcoleção por usuário — ver ADR-006)
 
 ## Índices compostos (`firebase/firestore.indexes.json`)
 
@@ -177,3 +202,5 @@ composto — o Firestore já indexa campos únicos automaticamente.
 - `children/{userId}/profiles`: exclusão física pelo próprio responsável
   (sem soft-delete — não há razão para reter o registro após remoção
   explícita pelo titular dos dados).
+- `notifications`: sem exclusão implementada nesta fase (coleção pequena e
+  de baixo volume; retenção/expiração fica como pendência futura).
