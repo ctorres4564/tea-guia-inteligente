@@ -40,11 +40,11 @@ export function AppSidebar() {
           <span key={item.href} className="relative">
             {item.disabled ? (
               <span
-                className="flex items-center justify-between rounded-card px-3 py-2 text-sm text-slate-400"
+                className="flex items-center justify-between rounded-card px-3 py-2 text-sm text-slate-400 dark:text-slate-500"
                 aria-disabled="true"
               >
                 {item.label}
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400 dark:bg-slate-800 dark:text-slate-500">
                   Em breve
                 </span>
               </span>
@@ -52,8 +52,10 @@ export function AppSidebar() {
               <Link
                 href={item.href}
                 className={cn(
-                  "block rounded-card px-3 py-2 text-sm font-medium",
-                  isActive ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100",
+                  "block rounded-card px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-950/30 dark:text-brand-400"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
                 )}
               >
                 {item.label}

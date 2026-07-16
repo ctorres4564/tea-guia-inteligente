@@ -115,8 +115,10 @@ conhecimento completa também permanece fora de escopo.
 - **Integração Contínua (CI)**: Workflow do GitHub Actions configurado em `.github/workflows/ci.yml` para validar lint, typecheck, regras do Firebase Emulator, testes unitários e build de produção a cada commit/PR.
 - **Deploy Contínuo (CD)**: Workflow configurado em `.github/workflows/deploy.yml` para automatizar o deploy na Vercel e regras de segurança no Firebase.
 - **Documentação de Manutenção**: Criado o [deploy.md](file:///c:/tea_guia_inteligente/docs/deploy.md) com as variáveis de ambiente, secrets e TTL de cache necessários.
+- **Modo Claro/Escuro (Light/Dark Mode)**: Suporte completo em Tailwind CSS (`darkMode: "class"`), persistido no `localStorage`, livre de FOUC (flash de tela branca) via script inline, integrado no layout e Sidebar do Dashboard e no AppHeader público.
 
 ## Fora de escopo permanente (a menos que redefinido em PRD futuro)
+
 
 
 - Teleconsulta, comunidade, marketplace, gamificação, agenda, integração

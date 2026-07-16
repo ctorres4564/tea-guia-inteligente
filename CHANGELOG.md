@@ -9,12 +9,17 @@ e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/
 
 ### Adicionado
 - **Pipeline de Integração Contínua (CI)** (Fase 10): Workflow `.github/workflows/ci.yml` configurado para rodar automaticamente lint, typecheck, testes unitários, testes de regras do Firebase Emulator e build de produção a cada PR/Push.
-- **Pipeline de Deploy Contínuo (CD)**: Workflow `.github/workflows/deploy.yml` configurado para automatizar deploy no Vercel e Firebase Rules.
 - **Documentação de Manutenção**: Criação do [deploy.md](file:///c:/tea_guia_inteligente/docs/deploy.md) contendo instruções de provisionamento de banco de dados, TTL para coleções de cache e configuração de GitHub Secrets.
+- **Suporte a Modo Claro/Escuro (Light/Dark Mode)**:
+  - Adicionado `darkMode: "class"` no `tailwind.config.ts`.
+  - Criado `ThemeProvider` (`ThemeProvider.tsx`) para controle de estados claro/escuro persistindo escolhas no `localStorage`.
+  - Script inline injetado no `<head>` de `RootLayout` para evitar o efeito FOUC (flash de tema branco) antes da hidratação do React.
+  - Componente interativo `ThemeToggle.tsx` com ícones estilizados para trocar o tema no Dashboard e AppHeader público.
 
 ## [0.6.1] - 2026-07-16
 
 ### Corrigido
+
 - `/api/admin/knowledge/publish` (Fase 9): a mitigação serverless para a
   geração assíncrona de embedding usava `request.waitUntil`, uma API que
   não existe em `NextRequest` — o código nunca era executado em runtime
