@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { Card, PageHeader } from "@/components/ui";
 import { SearchInterface } from "@/components/SearchInterface";
+import { DashboardInsights } from "@/components/DashboardInsights";
 import { siteConfig } from "@/config/site";
 import { getProfileAsAdmin } from "@/domains/users/admin-repository";
 import { getSessionUser } from "@/lib/security/session";
@@ -60,6 +61,9 @@ export default async function DashboardPage() {
         title={profile ? `Olá, ${profile.fullName.split(" ")[0]}` : "Olá"}
         description="Pesquise orientações clínicas na base de conhecimento ou gerencie sua conta."
       />
+
+      {/* Novidades e Recomendações Personalizadas (Fase 8) */}
+      <DashboardInsights />
 
       {/* Busca Semântica Avançada com IA */}
       <div>

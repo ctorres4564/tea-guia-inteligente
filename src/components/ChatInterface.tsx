@@ -93,6 +93,40 @@ export function ChatInterface() {
     }
   }, [user]);
 
+  const [relatedItems, setRelatedItems] = useState<SourceArticle[]>([]);
+  const [isRelatedLoading, setIsRelatedLoading] = useState(false);
+
+  // Carrega artigos relacionados quando o artigo ativo muda
+  useEffect(() => {
+    if (!activeArticle) {
+      setRelatedItems([]);
+      return;
+    }
+
+    const loadRelated = async () => {
+      setIsRelatedLoading(true);
+      try {
+        const res = await fetch("/api/knowledge/related", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ itemId: activeArticle.id }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRelatedItems(data.results || []);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar conteúdos relacionados no chat:", err);
+      } finally {
+        setIsRelatedLoading(false);
+      }
+    };
+
+    loadRelated();
+  }, [activeArticle]);
+
   // Preenche o input se o query param q estiver presente na URL (Redirecionamento do histórico)
   useEffect(() => {
     const queryParam = searchParams.get("q");
@@ -406,8 +440,48 @@ export function ChatInterface() {
             </div>
 
             {/* Conteúdo Completo */}
-            <div className="text-sm text-slate-800 whitespace-pre-line leading-relaxed pb-8">
+            <div className="text-sm text-slate-800 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100">
               {activeArticle.content}
+            </div>
+
+            {/* Conteúdos Relacionados */}
+            <div className="pt-6 pb-8">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 animate-fade-in">
+                Conteúdos Relacionados
+              </h4>
+              {isRelatedLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : relatedItems.length > 0 ? (
+                <div className="grid gap-3">
+                  {relatedItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setActiveArticle(item);
+                        // Rola o container do drawer para o topo
+                        const drawerElement = document.querySelector(".animate-in");
+                        if (drawerElement) {
+                          drawerElement.scrollTop = 0;
+                        }
+                      }}
+                      className="group cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 p-3 hover:bg-indigo-50/30 hover:border-indigo-100 transition-all duration-200"
+                    >
+                      <h5 className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                        {item.title}
+                      </h5>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                        {item.summary}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic">
+                  Nenhum conteúdo clínico relacionado encontrado.
+                </div>
+              )}
             </div>
           </div>
         </div>

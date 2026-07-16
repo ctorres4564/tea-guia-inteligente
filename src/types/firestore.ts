@@ -10,4 +10,5 @@ export const FIRESTORE_COLLECTIONS = {
   favorites: "favorites",
   history: "history",
   children: "children",
+  notifications: "notifications",
 } as const;

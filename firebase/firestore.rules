@@ -308,6 +308,18 @@ service cloud.firestore {
       allow delete: if isOwner(userId) && isActiveAccount();
     }
 
+    // ------------------------------------------------------------------
+    // notifications/{notificationId}  (Fase 8)
+    //
+    // Coleção global de notificações de sistema (ex: publicação de novos conteúdos).
+    // Leitura pública de sistema para qualquer conta ativa.
+    // Escrita bloqueada do lado do cliente (permitido apenas via Admin SDK no servidor).
+    // ------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read: if isActiveAccount();
+      allow write: if false;
+    }
+
     // Bloqueio padrão: qualquer coleção não listada explicitamente é negada.
     match /{document=**} {
       allow read, write: if false;

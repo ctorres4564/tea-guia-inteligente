@@ -147,6 +147,7 @@ async function main() {
     const reviewerDb = testEnv.authenticatedContext(REVIEWER_UID).firestore();
     const userADb = testEnv.authenticatedContext(USER_A_UID).firestore();
     const userBDb = testEnv.authenticatedContext(USER_B_UID).firestore();
+    const anonDb = testEnv.unauthenticatedContext().firestore();
 
     // =====================================================
     // Suíte 1: Criação de knowledgeItems
@@ -313,6 +314,34 @@ async function main() {
           type: "search",
           query: "teste",
           // createdAt ausente — regra exige timestamp
+        })
+      );
+    });
+
+    // =====================================================================
+    // Suíte 5: Notificações de Sistema
+    // =====================================================================
+    console.log("\n🔔 Notificações — Acesso público-ativo e escrita bloqueada");
+
+    await test("usuário ativo pode ler notificações do sistema", async () => {
+      await assertSucceeds(
+        getDoc(doc(userADb, "notifications/notif-123"))
+      );
+    });
+
+    await test("usuário anônimo não pode ler notificações", async () => {
+      await assertFails(
+        getDoc(doc(anonDb, "notifications/notif-123"))
+      );
+    });
+
+    await test("nenhum usuário cliente pode criar notificações", async () => {
+      await assertFails(
+        setDoc(doc(userADb, "notifications/notif-nova"), {
+          type: "new_content",
+          title: "Invasão",
+          summary: "Tenta criar do cliente",
+          createdAt: new Date(),
         })
       );
     });

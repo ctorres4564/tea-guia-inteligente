@@ -78,6 +78,7 @@ describe("POST /api/admin/knowledge/publish — fluxo editorial", () => {
     vi.mocked(adminMod.getAdminFirestore).mockReturnValue({
       collection: vi.fn().mockReturnValue({
         doc: vi.fn().mockReturnValue(mockDocRef),
+        add: vi.fn().mockResolvedValue({ id: "notif-id-123" }),
       }),
     } as unknown as ReturnType<typeof adminMod.getAdminFirestore>);
   });

@@ -136,6 +136,16 @@ export async function POST(request: NextRequest) {
       embeddingVersion: 1,
     });
 
+    // 7. Registra uma notificação de novos conteúdos no sistema
+    await db.collection("notifications").add({
+      type: "new_content",
+      title: "Novo artigo clínico disponível!",
+      summary: title,
+      contentId: id,
+      contentSlug: data.slug || "",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro no Route Handler de publicação:", error);
