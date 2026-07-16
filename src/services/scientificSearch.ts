@@ -17,21 +17,8 @@ export async function searchScientificReferences(
   query: string,
   apiKey: string
 ): Promise<ScientificArticle[]> {
-  const backup: Record<string, string | undefined> = {
-    GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    FIREBASE_ADMIN_PROJECT_ID: process.env.FIREBASE_ADMIN_PROJECT_ID,
-    GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
-    GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
-  };
-
-  // Delete all to force Gemini Developer API (AI Studio)
-  delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  delete process.env.FIREBASE_ADMIN_PROJECT_ID;
-  delete process.env.GCLOUD_PROJECT;
-  delete process.env.GOOGLE_CLOUD_PROJECT;
-
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, vertexai: false });
 
     // 1. Converte a dúvida do usuário em termos de pesquisa em inglês usando Gemini
     const extractionPrompt = `Extraia termos de pesquisa acadêmicos em inglês para buscar no PubMed/Europe PMC com base nesta dúvida: "${query}". Retorne APENAS os termos de busca (ex: "echolalia autism intervention" ou "sensory processing autism"). Não inclua operadores booleanos complexos nem explicações.`;
@@ -81,13 +68,5 @@ export async function searchScientificReferences(
   } catch (error) {
     console.error("[Scientific Search] Erro ao pesquisar artigos no Europe PMC:", error);
     return [];
-  } finally {
-    // Restore all
-    Object.keys(backup).forEach((key) => {
-      const val = backup[key];
-      if (val !== undefined) {
-        process.env[key] = val;
-      }
-    });
   }
 }

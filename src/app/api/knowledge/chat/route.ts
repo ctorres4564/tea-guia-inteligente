@@ -201,20 +201,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const backup = {
-        GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-        FIREBASE_ADMIN_PROJECT_ID: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
-        GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
-      };
-
       try {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-        delete process.env.FIREBASE_ADMIN_PROJECT_ID;
-        delete process.env.GCLOUD_PROJECT;
-        delete process.env.GOOGLE_CLOUD_PROJECT;
-
-        const ai = new GoogleGenAI({ apiKey });
+        const ai = new GoogleGenAI({ apiKey, vertexai: false });
         const response = await ai.models.embedContent({
           model: "gemini-embedding-2",
           contents: message.trim(),
@@ -236,13 +224,6 @@ export async function POST(request: NextRequest) {
           { error: "Falha ao gerar embeddings." },
           { status: 502 }
         );
-      } finally {
-        Object.keys(backup).forEach((key) => {
-          const val = backup[key as keyof typeof backup];
-          if (val !== undefined) {
-            process.env[key] = val;
-          }
-        });
       }
     }
 
@@ -538,37 +519,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backupChat = {
-      GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      FIREBASE_ADMIN_PROJECT_ID: process.env.FIREBASE_ADMIN_PROJECT_ID,
-      GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
-      GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
-    };
-
-    let responseStream;
-    try {
-      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      delete process.env.FIREBASE_ADMIN_PROJECT_ID;
-      delete process.env.GCLOUD_PROJECT;
-      delete process.env.GOOGLE_CLOUD_PROJECT;
-
-      const ai = new GoogleGenAI({ apiKey: chatApiKey });
-      responseStream = await ai.models.generateContentStream({
-        model: "gemini-1.5-flash",
-        contents: geminiContents,
-        config: {
-          systemInstruction,
-          temperature: 0.2, // Baixa criatividade para garantir fidelidade ao texto de origem
-        },
-      });
-    } finally {
-      Object.keys(backupChat).forEach((key) => {
-        const val = backupChat[key as keyof typeof backupChat];
-        if (val !== undefined) {
-          process.env[key] = val;
-        }
-      });
-    }
+    const ai = new GoogleGenAI({ apiKey: chatApiKey, vertexai: false });
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-1.5-flash",
+      contents: geminiContents,
+      config: {
+        systemInstruction,
+        temperature: 0.2, // Baixa criatividade para garantir fidelidade ao texto de origem
+      },
+    });
 
     // Timeout efetivo de 30 segundos: usa flag streamClosed + setTimeout que
     // fecha o controller diretamente.
