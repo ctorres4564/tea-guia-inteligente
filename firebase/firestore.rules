@@ -265,9 +265,11 @@ service cloud.firestore {
         && request.resource.data.query.size() <= 500
         // createdAt deve ser um timestamp de servidor
         && request.resource.data.createdAt is timestamp
-        // knowledgeItemId, se presente, deve ser string
+        // knowledgeItemId, se presente, deve ser string ou null
+        // (null indica entrada de busca sem item associado)
         && (
           !('knowledgeItemId' in request.resource.data)
+          || request.resource.data.knowledgeItemId == null
           || request.resource.data.knowledgeItemId is string
         )
         // Apenas os campos permitidos — sem campos arbitrários
