@@ -147,7 +147,7 @@ export default function KnowledgeItemsAdminPage() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[item.reviewStatus]}`}>
                       {STATUS_LABELS[item.reviewStatus]}
                     </span>
-                    {item.deletedAt && (
+                    {Boolean(item.deletedAt) && (
                       <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-500">
                         Excluído (lógico)
                       </span>
@@ -208,7 +208,7 @@ export default function KnowledgeItemsAdminPage() {
                     </Button>
                   )}
 
-                  {isAdmin && item.deletedAt && (
+                  {isAdmin && Boolean(item.deletedAt) && (
                     <Button
                       variant="secondary"
                       isLoading={busyId === item.id}

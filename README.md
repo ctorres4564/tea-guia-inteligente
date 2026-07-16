@@ -79,6 +79,11 @@ Ver `.env.example` para a lista completa. Resumo:
 
 ## Configuração do Firebase
 
+O ambiente integrado atualmente usa o projeto Firebase
+`tea-guia-inteligente`. O vínculo do Firebase CLI está em `.firebaserc`; as
+credenciais de execução permanecem exclusivamente em `.env.local` (local) e
+nas Environment Variables da Vercel.
+
 1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
 2. Em **Authentication → Sign-in method**, habilite o provedor
    **E-mail/senha**.
@@ -91,6 +96,10 @@ Ver `.env.example` para a lista completa. Resumo:
    `FIREBASE_ADMIN_CLIENT_EMAIL` e `FIREBASE_ADMIN_PRIVATE_KEY` em
    `.env.local` a partir desse arquivo — **não** adicione o arquivo JSON
    ao repositório.
+   Em desenvolvimento local, também é possível salvar o arquivo como
+   `serviceAccountKey.json` (nome já ignorado pelo Git) e definir
+   `GOOGLE_APPLICATION_CREDENTIALS=./serviceAccountKey.json`. Na Vercel,
+   use sempre as três variáveis `FIREBASE_ADMIN_*`.
 7. Publique as regras e índices:
 
    ```bash
@@ -122,6 +131,7 @@ A UI dos emuladores fica disponível em `http://localhost:4000`.
 | `npm run lint` | Executa o ESLint |
 | `npm run typecheck` | Verifica tipos com `tsc --noEmit` |
 | `npm run test` | Executa os testes com Vitest |
+| `npm run test:firebase` | Testa Auth, Firestore e Storage reais e remove os dados temporários |
 | `npm run test:watch` | Executa os testes em modo watch |
 | `npm run firebase:emulators` | Inicia os emuladores do Firebase |
 | `npm run firebase:seed` | Popula dados de exemplo no Firestore Emulator (categorias e conteúdos) |
@@ -147,12 +157,18 @@ para o detalhamento completo.
 
 ## Implantação (Vercel)
 
-1. Importe o repositório na Vercel.
-2. Configure as mesmas variáveis de ambiente de `.env.example` no painel
-   da Vercel (Production e Preview).
-3. O build padrão (`npm run build`) já é compatível com a Vercel — nenhuma
-   configuração adicional é necessária.
-4. Publique as regras do Firestore/Storage separadamente via Firebase CLI
+1. Importe o repositório na Vercel. O framework será detectado como Next.js;
+   use `npm run build` como Build Command (ou mantenha o padrão detectado).
+2. Use Node.js 20 (definido em `.nvmrc`) e configure as mesmas variáveis de
+   ambiente de `.env.example` no painel da Vercel, para **Production** e
+   **Preview**. Em particular, defina `NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false`.
+3. Para `FIREBASE_ADMIN_PRIVATE_KEY`, cole a chave como uma única linha com
+   as quebras representadas por `\\n`; o servidor as converte corretamente em
+   tempo de execução. Nunca cadastre a chave em arquivos versionados.
+4. Gere e versione o `package-lock.json` antes do primeiro deploy
+   (`npm install --package-lock-only --ignore-scripts`) para que a Vercel use
+   instalações reproduzíveis com `npm ci`.
+5. Publique as regras do Firestore/Storage separadamente via Firebase CLI
    (a Vercel não faz isso automaticamente).
 
 ## Painel administrativo

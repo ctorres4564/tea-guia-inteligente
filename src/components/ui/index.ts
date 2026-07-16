@@ -7,3 +7,4 @@ export * from "./Alert";
 export * from "./Loading";
 export * from "./EmptyState";
 export * from "./FormField";
+export * from "../layout/PageHeader";

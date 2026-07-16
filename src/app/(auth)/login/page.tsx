@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Alert, Button, FormField, Input, Card } from "@/components/ui";
@@ -12,7 +12,7 @@ import { signIn } from "@/domains/auth/service";
 import { isAppError } from "@/lib/errors/app-error";
 import { loginSchema, type LoginInput } from "@/lib/validation/auth.schema";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
@@ -85,5 +85,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Card className="min-h-80" aria-busy="true" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

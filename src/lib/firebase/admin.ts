@@ -1,6 +1,12 @@
 import "server-only";
 
-import { type App, cert, getApps, initializeApp } from "firebase-admin/app";
+import {
+  type App,
+  applicationDefault,
+  cert,
+  getApps,
+  initializeApp,
+} from "firebase-admin/app";
 import { type Auth, getAuth } from "firebase-admin/auth";
 import { type Firestore, getFirestore } from "firebase-admin/firestore";
 
@@ -32,15 +38,21 @@ function initFirebaseAdmin(): App {
     return adminApp;
   }
 
-  const env = getAdminEnv();
-
-  adminApp = initializeApp({
-    credential: cert({
-      projectId: env.FIREBASE_ADMIN_PROJECT_ID,
-      clientEmail: env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      privateKey: formatPrivateKey(env.FIREBASE_ADMIN_PRIVATE_KEY),
-    }),
-  });
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Desenvolvimento local: o SDK lê o JSON apontado pela variável padrão
+    // do Google. O arquivo deve permanecer ignorado pelo Git.
+    adminApp = initializeApp({ credential: applicationDefault() });
+  } else {
+    // Produção/Vercel: credenciais explícitas fornecidas por variáveis seguras.
+    const env = getAdminEnv();
+    adminApp = initializeApp({
+      credential: cert({
+        projectId: env.FIREBASE_ADMIN_PROJECT_ID,
+        clientEmail: env.FIREBASE_ADMIN_CLIENT_EMAIL,
+        privateKey: formatPrivateKey(env.FIREBASE_ADMIN_PRIVATE_KEY),
+      }),
+    });
+  }
 
   return adminApp;
 }

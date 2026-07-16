@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:firebase": "node firebase/test/firebase-admin-smoke.mjs",
     "firebase:emulators": "firebase emulators:start",
     "firebase:seed": "node firebase/seed/seed.mjs"
   },

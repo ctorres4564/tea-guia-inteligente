@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 
 import { getAdminAuth } from "@/lib/firebase/admin";
 import type { ProfileRole } from "@/lib/validation/profile.schema";
+import { SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 
 export { SESSION_COOKIE_NAME } from "@/lib/security/session-cookie";
 
