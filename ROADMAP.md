@@ -67,10 +67,19 @@ conhecimento completa também permanece fora de escopo.
 - Interface de favoritos com gerenciamento dinâmico
 - Gravação automática de histórico de pesquisas, perguntas e leituras de fichas
 
-## Fase 7 — Perfil da criança
+## Fase 7 — Perfil da criança ✅ (implementada)
 
-- Cadastro de perfil da criança (idade, diagnóstico, preferências)
-- Personalização de respostas com base no perfil
+- Cadastro de perfil(is) da criança por conta (nome, data de nascimento,
+  status diagnóstico, nível de suporte, estilo de comunicação, interesses,
+  sensibilidades, observações) — múltiplos perfis por conta são suportados
+  (`/dashboard/criancas`)
+- Personalização de respostas do chat com base no perfil selecionado:
+  idade calculada dinamicamente, nível de suporte, interesses e
+  sensibilidades são injetados como contexto de calibração de tom no
+  assistente de IA — nunca usados para diagnóstico (ver
+  `docs/decisions/ADR-005-child-profile-privacy.md`)
+- Acesso ao perfil da criança restrito estritamente ao próprio responsável,
+  sem exceção administrativa
 
 ## Fase 8 — Conteúdo Inteligente
 

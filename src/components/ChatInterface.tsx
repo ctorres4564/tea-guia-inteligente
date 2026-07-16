@@ -3,9 +3,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import { Button, Input, Alert } from "@/components/ui";
+import { Button, Input, Alert, Select } from "@/components/ui";
 import { toggleFavorite, listFavorites } from "@/domains/favorites/service";
 import { addHistoryEntry } from "@/domains/history/service";
+import { listChildren } from "@/domains/children/service";
+import { formatAgeLabel } from "@/lib/utils/age";
+import type { ChildProfile } from "@/lib/validation/child-profile.schema";
 
 interface SourceArticle {
   id: string;
@@ -43,6 +46,10 @@ export function ChatInterface() {
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [activeArticle, setActiveArticle] = useState<SourceArticle | null>(null);
 
+  // Fase 7 — perfil da criança selecionado para personalizar o tom das respostas
+  const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Rolagem automática para o final das mensagens
@@ -67,6 +74,22 @@ export function ChatInterface() {
 
     if (user) {
       loadFavorites();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const loadChildren = async () => {
+      if (!user) return;
+      try {
+        const list = await listChildren(user.uid);
+        setChildren(list);
+      } catch (err) {
+        console.error("Erro ao carregar perfis de crianças:", err);
+      }
+    };
+
+    if (user) {
+      loadChildren();
     }
   }, [user]);
 
@@ -109,6 +132,7 @@ export function ChatInterface() {
         body: JSON.stringify({
           message: userMessage,
           history: messages, // passa o histórico anterior
+          childId: selectedChildId || undefined, // Fase 7 — personalização opcional
         }),
       });
 
@@ -208,6 +232,28 @@ export function ChatInterface() {
           Este assistente responde estritamente com base em artigos validados de nossa base. Suas respostas têm finalidade puramente educativa e <strong>não constituem diagnósticos ou prescrições</strong>. Por privacidade, evite inserir dados pessoais identificáveis de crianças nas suas perguntas.
         </p>
       </div>
+
+      {/* Fase 7 — Seletor de perfil da criança para personalizar as respostas */}
+      {children.length > 0 && (
+        <div className="border-b border-slate-200 bg-white px-4 py-2 flex items-center gap-2">
+          <label htmlFor="chat-child-select" className="text-xs font-medium text-slate-500 shrink-0">
+            Personalizar para:
+          </label>
+          <Select
+            id="chat-child-select"
+            value={selectedChildId}
+            onChange={(e) => setSelectedChildId(e.target.value)}
+            className="w-auto text-xs py-1"
+          >
+            <option value="">Sem personalização</option>
+            {children.map((child) => (
+              <option key={child.id} value={child.id}>
+                {child.name} ({formatAgeLabel(child.birthDate)})
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {/* Área de Histórico das Mensagens */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-50/50">

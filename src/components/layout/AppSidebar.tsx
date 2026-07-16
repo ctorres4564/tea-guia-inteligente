@@ -18,6 +18,7 @@ const ITEMS: SidebarItem[] = [
   { label: "Biblioteca", href: "/dashboard/biblioteca", disabled: true },
   { label: "Favoritos", href: "/dashboard/favoritos" },
   { label: "Histórico", href: "/dashboard/historico" },
+  { label: "Perfil da criança", href: "/dashboard/criancas" },
 ];
 
 const ADMIN_ROLES = ["professional", "reviewer", "administrator"];

@@ -9,4 +9,5 @@ export const FIRESTORE_COLLECTIONS = {
   knowledgeSources: "knowledgeSources",
   favorites: "favorites",
   history: "history",
+  children: "children",
 } as const;

@@ -5,6 +5,25 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.4.0] - 2026-07-16
+
+### Adicionado
+- Perfil da criança (Fase 7): cadastro de um ou mais perfis por conta
+  (nome, data de nascimento, status diagnóstico, nível de suporte,
+  estilo de comunicação, interesses, sensibilidades, observações) em
+  `/dashboard/criancas` (`src/domains/children/service.ts`).
+- Personalização do assistente de IA: seletor de perfil no Chat injeta
+  idade calculada dinamicamente, nível de suporte, interesses e
+  sensibilidades como contexto de calibração de tom no
+  `systemInstruction` de `/api/knowledge/chat` — nunca usado para
+  diagnóstico, reforçado explicitamente no prompt.
+- Regras do Firestore para `children/{userId}/profiles/{childId}`:
+  acesso restrito ao próprio responsável, sem exceção administrativa
+  (dado de saúde de menor).
+- Utilitário de cálculo de idade (`src/lib/utils/age.ts`).
+- `docs/decisions/ADR-005-child-profile-privacy.md`.
+- Testes: schema do perfil da criança e cálculo de idade.
+
 ## [0.3.0] - 2026-07-16
 
 ### Adicionado

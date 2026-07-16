@@ -110,6 +110,30 @@ ROADMAP.md.
 | knowledgeItemId   | string \| null                  |
 | createdAt         | timestamp                      |
 
+### `children/{userId}/profiles/{childId}` (subcoleção — Fase 7)
+
+Dado sensível (status diagnóstico de uma criança). Acesso restrito ao
+próprio responsável, sem exceção administrativa — ver
+`docs/decisions/ADR-005-child-profile-privacy.md`.
+
+| Campo               | Tipo                                                                          |
+| -------------------- | ------------------------------------------------------------------------------ |
+| id                   | string                                                                          |
+| name                 | string (nome ou apelido)                                                       |
+| birthDate            | string (`AAAA-MM-DD`)                                                          |
+| diagnosisStatus      | `not_diagnosed \| in_evaluation \| diagnosed`                                  |
+| supportLevel         | `level_1 \| level_2 \| level_3 \| null` (aplicável apenas se `diagnosed`)       |
+| communicationStyle   | `verbal \| verbal_with_support \| minimally_verbal \| non_verbal \| uses_aac \| null` |
+| interests            | array de string (até 10)                                                        |
+| sensitivities        | array de string (até 10)                                                        |
+| notes                | string (opcional, até 500 caracteres)                                           |
+| createdAt            | timestamp                                                                        |
+| updatedAt            | timestamp                                                                        |
+
+Usado apenas para personalizar o tom das respostas do assistente de IA
+(`/api/knowledge/chat`) — nunca para diagnóstico, nunca lido por outra
+conta.
+
 ## Versionamento (Fase 2)
 
 `knowledgeItems.version` é incrementado atomicamente (`increment(1)`) a
@@ -129,6 +153,7 @@ são lógicas e devem ser validadas na camada de aplicação (Zod + regras):
 - `favorites/{userId}/items/{id}.knowledgeItemId` → `knowledgeItems/{id}`
 - `history/{userId}/items/{id}.knowledgeItemId` → `knowledgeItems/{id}`
 - `knowledgeItems.createdBy` / `.reviewedBy` → `profiles/{uid}`
+- `children/{userId}/profiles/{id}` → escopo lógico de `profiles/{userId}` (não referenciado por outras coleções)
 
 ## Índices compostos (`firebase/firestore.indexes.json`)
 
@@ -149,3 +174,6 @@ composto — o Firestore já indexa campos únicos automaticamente.
   a administradores.
 - `knowledgeItems`: exclusão lógica via `deletedAt`; exclusão física
   restrita a administradores e não exposta na interface desta fase.
+- `children/{userId}/profiles`: exclusão física pelo próprio responsável
+  (sem soft-delete — não há razão para reter o registro após remoção
+  explícita pelo titular dos dados).

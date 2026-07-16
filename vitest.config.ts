@@ -13,6 +13,9 @@ export default defineConfig({
     // são scripts Node standalone que requerem o Emulator ativo e devem
     // ser executados com: npm run test:rules  ou  npm run test:storage
     include: ["src/**/*.test.{ts,tsx}"],
+    // Os testes de rota Next.js usam vi.resetModules() + dynamic imports,
+    // o que pode ser lento sob carga. 15s evita falsos timeouts.
+    testTimeout: 15000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],

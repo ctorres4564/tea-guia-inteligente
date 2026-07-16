@@ -7,6 +7,14 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getActiveSession } from "@/lib/security/authorization";
 import { mapFirebaseError } from "@/lib/errors/firebase-errors";
 import { knowledgeItemSchema } from "@/lib/validation/knowledge.schema";
+import {
+  childProfileSchema,
+  COMMUNICATION_STYLE_LABELS,
+  DIAGNOSIS_STATUS_LABELS,
+  SUPPORT_LEVEL_LABELS,
+} from "@/lib/validation/child-profile.schema";
+import { formatAgeLabel } from "@/lib/utils/age";
+import { FIRESTORE_COLLECTIONS } from "@/types/firestore";
 
 const SIMILARITY_THRESHOLD = 0.65;
 
@@ -62,7 +70,60 @@ const chatPayloadSchema = z.object({
     .max(10, "O hist\u00f3rico n\u00e3o pode conter mais de 10 mensagens.")
     .optional()
     .default([]),
+  // Fase 7 \u2014 perfil da crian\u00e7a selecionado para personalizar o tom da
+  // resposta. Opcional: sem sele\u00e7\u00e3o, o assistente responde de forma neutra
+  // (comportamento das fases anteriores, preservado).
+  childId: z.string().min(1).optional(),
 });
+
+/**
+ * Busca o perfil da crian\u00e7a (Fase 7) SOMENTE se ele pertencer ao usu\u00e1rio da
+ * sess\u00e3o autenticada \u2014 nunca permite ler o perfil de outra conta, mesmo que
+ * o childId seja adivinhado. Retorna `null` silenciosamente em qualquer
+ * caso de erro/aus\u00eancia, para nunca quebrar o chat por causa da
+ * personaliza\u00e7\u00e3o (ela \u00e9 um extra, n\u00e3o um requisito).
+ */
+async function buildChildContextBlock(
+  ownerUid: string,
+  childId: string | undefined,
+): Promise<string> {
+  if (!childId) return "";
+
+  try {
+    const db = getAdminFirestore();
+    const snapshot = await db
+      .collection(FIRESTORE_COLLECTIONS.children)
+      .doc(ownerUid)
+      .collection("profiles")
+      .doc(childId)
+      .get();
+
+    if (!snapshot.exists) return "";
+
+    const parsed = childProfileSchema.safeParse({ id: snapshot.id, ...snapshot.data() });
+    if (!parsed.success) return "";
+
+    const child = parsed.data;
+    const age = formatAgeLabel(child.birthDate);
+    const parts = [
+      `idade: ${age}`,
+      `status diagn\u00f3stico: ${DIAGNOSIS_STATUS_LABELS[child.diagnosisStatus]}`,
+    ];
+    if (child.supportLevel) parts.push(`n\u00edvel de suporte: ${SUPPORT_LEVEL_LABELS[child.supportLevel]}`);
+    if (child.communicationStyle) {
+      parts.push(`comunica\u00e7\u00e3o: ${COMMUNICATION_STYLE_LABELS[child.communicationStyle]}`);
+    }
+    if (child.interests.length > 0) parts.push(`interesses: ${child.interests.join(", ")}`);
+    if (child.sensitivities.length > 0) {
+      parts.push(`sensibilidades: ${child.sensitivities.join(", ")}`);
+    }
+
+    return `\n\nCONTEXTO DA CRIAN\u00c7A (uso exclusivo para calibrar tom, exemplos e n\u00edvel de linguagem \u2014 NUNCA para diagnosticar ou avaliar clinicamente):\n${parts.join("; ")}.\nUse essas informa\u00e7\u00f5es apenas para tornar a explica\u00e7\u00e3o mais pr\u00e1tica (ex.: sugerir exemplos com os interesses da crian\u00e7a, evitar recomenda\u00e7\u00f5es que conflitem com as sensibilidades informadas). Continue seguindo TODAS as diretrizes obrigat\u00f3rias acima, especialmente a proibi\u00e7\u00e3o de diagn\u00f3sticos.`;
+  } catch (err) {
+    console.error("Erro ao carregar perfil da crian\u00e7a para personaliza\u00e7\u00e3o do chat:", err);
+    return "";
+  }
+}
 
 type ChatMessage = z.infer<typeof chatPayloadSchema>["history"][number];
 
@@ -100,7 +161,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const { message, history } = parsed.data;
+    const { message, history, childId } = parsed.data;
 
     // 3. RAG - Passo 1: Gerar o embedding da pergunta atual
     let queryEmbedding: number[];
@@ -190,7 +251,13 @@ export async function POST(request: NextRequest) {
       contextText = "\n\nNÃO há artigos validados correspondentes ao termo no contexto.";
     }
 
-    const systemInstruction = SYSTEM_INSTRUCTION_BASE + contextText;
+    // Fase 7 — se um perfil de criança foi selecionado (e pertence ao
+    // usuário autenticado), adiciona um bloco curto de contexto para
+    // calibrar o tom da resposta. Nunca afeta a busca vetorial nem os
+    // artigos recuperados — apenas a formulação da resposta final.
+    const childContextBlock = await buildChildContextBlock(sessionUser.uid, childId);
+
+    const systemInstruction = SYSTEM_INSTRUCTION_BASE + contextText + childContextBlock;
 
     // RAG - Passo 4: Formatação do histórico para a API do Gemini
     // O histórico já foi validado pelo schema Zod (máx. 10 items, role e content validados)

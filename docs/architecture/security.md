@@ -28,6 +28,10 @@ Resumo:
   `professional`, `reviewer` e `administrator`, verificado via
   `firestore.get()` nas regras do Storage (autorização cruzada
   Storage↔Firestore — ver ADR-003).
+- `children/{userId}/profiles/{childId}` (Fase 7): acesso restrito ao
+  próprio responsável — **sem exceção para `administrator`**, diferente
+  de todas as demais coleções desta seção. Dado de saúde de uma criança
+  (ver ADR-005).
 
 ## Papéis (roles)
 
@@ -83,14 +87,20 @@ internos e stack traces nunca são exibidos ao usuário (ver
 
 ## LGPD
 
-Dados pessoais tratados nesta fase: nome completo, e-mail, papel e status
-de conta (coleção `profiles`). Recomendações para fases futuras:
+Dados pessoais tratados: nome completo, e-mail, papel e status de conta
+(coleção `profiles`). Desde a Fase 7, também dado de saúde de uma criança
+(status diagnóstico, nível de suporte) na coleção `children/{userId}/
+profiles` — tratado com controles adicionais: acesso restrito ao titular
+da conta sem exceção administrativa, uso exclusivo para calibração de tom
+do assistente de IA, nunca usado para diagnóstico nem enviado a serviços
+além do provedor do LLM (ver ADR-005). Recomendações para fases futuras:
 
 - Política de privacidade e termos de uso acessíveis publicamente antes
   do cadastro (nesta fase, o cadastro já exige aceite explícito de uma
   declaração de finalidade educacional — ver formulário de cadastro).
 - Mecanismo de exclusão/anonimização de conta mediante solicitação do
-  titular dos dados.
+  titular dos dados — deve incluir a exclusão de `children/{userId}/
+  profiles/**` (pendência registrada em ADR-005).
 - Registro de consentimento com timestamp (hoje, implícito no aceite do
   formulário; recomenda-se registrar explicitamente em fase futura).
 - Criptografia em trânsito: garantida pelo HTTPS obrigatório da
