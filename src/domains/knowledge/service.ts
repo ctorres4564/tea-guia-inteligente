@@ -138,11 +138,16 @@ export async function updateKnowledgeItemContent(
       ...patch,
       version: increment(1),
       updatedAt: serverTimestamp(),
+      // Invalida o embedding: qualquer edição de conteúdo desatualiza o vetor
+      // semântico existente. A próxima publicação via Admin SDK (publish route)
+      // regenera o embedding e grava embeddingVersion: 1.
+      embeddingVersion: 0,
     });
   } catch (error) {
     throw mapFirebaseError(error);
   }
 }
+
 
 export async function submitKnowledgeItemForReview(id: string): Promise<void> {
   try {
@@ -173,17 +178,25 @@ export async function approveKnowledgeItem(id: string, reviewerUid: string): Pro
   }
 }
 
-export async function publishKnowledgeItem(id: string, reviewerUid: string): Promise<void> {
+export async function publishKnowledgeItem(id: string, _reviewerUid: string): Promise<void> {
   try {
-    const firestore = getFirebaseFirestore();
-    await updateDoc(doc(firestore, COLLECTION, id), {
-      reviewStatus: "published",
-      reviewedBy: reviewerUid,
-      publishedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+    const res = await fetch("/api/admin/knowledge/publish", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Erro ao publicar o item (HTTP ${res.status}).`);
+    }
   } catch (error) {
-    throw mapFirebaseError(error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Erro desconhecido ao tentar publicar o conteúdo.");
   }
 }
 

@@ -87,6 +87,8 @@ async function upsertKnowledgeItem(categoryId, item) {
   const existing = await db.collection("knowledgeItems").where("slug", "==", item.slug).limit(1).get();
   if (!existing.empty) return;
 
+  const mockVector = new Array(768).fill(0).map(() => Math.random() * 0.1);
+
   await db.collection("knowledgeItems").add({
     ...item,
     categoryId,
@@ -98,6 +100,7 @@ async function upsertKnowledgeItem(categoryId, item) {
     reviewedBy: SEED_AUTHOR_UID,
     deletedAt: null,
     attachments: [],
+    embedding: FieldValue.vector(mockVector),
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });

@@ -11,13 +11,16 @@ e temas relacionados ao desenvolvimento infantil.
 
 ## Estado atual do projeto
 
-**Fase 0/1 (Fundação técnica)** e **Fase 2 (Base de Conhecimento e Painel
-Administrativo)** implementadas: autenticação, perfis, proteção de rotas,
-CRUD de categorias e conteúdos com fluxo de revisão e versionamento,
-upload de materiais de apoio, e painel administrativo em
-`/dashboard/admin`. Funcionalidades de IA (chat, RAG, embeddings, busca
-semântica), favoritos, histórico e pagamentos **ainda não foram
-implementados** — ver [ROADMAP.md](./ROADMAP.md).
+**Fases 0/1 a 6 implementadas:**
+
+- **Fase 0/1 — Fundação técnica:** autenticação Firebase, perfis, proteção de rotas.
+- **Fase 2 — Base de Conhecimento e Painel Administrativo:** CRUD de categorias e conteúdos com fluxo de revisão editorial, versionamento e upload de materiais de apoio. Painel em `/dashboard/admin`.
+- **Fase 3 — Embeddings e Indexação Vetorial:** geração de embeddings (Gemini `text-embedding-004`) na publicação, armazenamento em Cloud Firestore com índice KNN.
+- **Fase 4 — Busca Semântica:** rota `/api/knowledge/search` com busca vetorial KNN, filtros e limiar de similaridade.
+- **Fase 5 — Chat RAG:** rota `/api/knowledge/chat` com busca RAG + streaming via Gemini 1.5 Flash, instruções de sistema clínico e disclaimer.
+- **Fase 6 — Favoritos e Histórico:** serviços e páginas de favoritos (`/dashboard/favoritos`) e histórico (`/dashboard/historico`).
+
+Próxima fase planejada: **Fase 7 — Perfil da Criança e Personalização** — ver [ROADMAP.md](./ROADMAP.md).
 
 ## Público
 

@@ -85,16 +85,18 @@ usado para perfis desde a Fase 0/1; a checagem de papel no servidor
 (`getAuthorizedSession`) protege apenas a renderização da página (evita
 que um usuário sem permissão sequer veja a interface administrativa).
 
-## Limites atuais (o que esta fase NÃO cobre)
+## Funcionalidades implementadas (Fases 3–6)
 
-- Chatbot, LLM, RAG, embeddings e banco vetorial.
-- Importação em massa da base de conhecimento clínica (o script de seed
-  em `firebase/seed/seed.mjs` cobre apenas dados mínimos de exemplo para
-  o emulador).
-- Interface de `knowledgeSources` (fontes bibliográficas) — schema e
-  regras prontos desde a Fase 0/1, sem tela própria ainda.
-- Interfaces de favoritos e histórico (apenas estrutura de dados e regras
-  de segurança preparadas).
+- **Fase 3 — Embeddings:** geração de vetor semântico (Gemini `text-embedding-004`, 768 dims) no momento da publicação. Campo `embeddingVersion` sinaliza se o vetor está atualizado (`1`) ou desatualizado após edição (`0`).
+- **Fase 4 — Busca Semântica:** `/api/knowledge/search` — busca KNN no Firestore, filtros em memória, threshold de similaridade 0.65. Resultados exibem rótulo qualitativo de correspondência.
+- **Fase 5 — Chat RAG:** `/api/knowledge/chat` — retrieval aumentado, streaming via Gemini 1.5 Flash, instruções de sistema clínico, disclaimer obrigatório. Payload validado via Zod.
+- **Fase 6 — Favoritos e Histórico:** `/dashboard/favoritos` e `/dashboard/historico`. Favoritos usam ID determinístico (idempotente). Histórico com limite de 30 registros na consulta.
+
+## Limites atuais (o que ainda não está coberto)
+
+- Importação em massa da base clínica (script de seed em `firebase/seed/seed.mjs` cobre apenas dados mínimos para o emulador).
+- Interface de `knowledgeSources` (fontes bibliográficas) — schema e regras prontos, sem tela própria.
+- Fase 7: Perfil da criança, personalização da IA, recomendações — planejado, não iniciado.
 - Pagamentos, notificações e aplicativo mobile nativo.
 
 ## Hospedagem

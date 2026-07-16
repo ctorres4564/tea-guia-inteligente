@@ -51,6 +51,7 @@ export const knowledgeItemSchema = z.object({
   updatedAt: z.unknown(),
   deletedAt: z.unknown().nullable().optional(),
   attachments: z.array(knowledgeAttachmentSchema).default([]),
+  embedding: z.array(z.number()).length(768).optional(),
 });
 export type KnowledgeItem = z.infer<typeof knowledgeItemSchema>;
 

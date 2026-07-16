@@ -60,7 +60,15 @@ service firebase.storage {
     }
 
     match /knowledge/{itemId}/{fileName} {
-      allow read: if true;
+      // Leitura restrita: apenas quando o item associado estiver publicado e
+      // não excluído logicamente. A consulta cross-service ao Firestore é
+      // suportada dentro do mesmo projeto Firebase e garante que rascunhos,
+      // conteúdos em revisão e itens com deletedAt não sejam expostos por URL
+      // direta. Custo: +1 leitura Firestore por download de arquivo (aceitável
+      // neste volume — documentado em docs/decisions/ADR-002-auth-strategy.md).
+      allow read: if firestore.exists(/databases/(default)/documents/knowledgeItems/$(itemId))
+        && firestore.get(/databases/(default)/documents/knowledgeItems/$(itemId)).data.reviewStatus == 'published'
+        && firestore.get(/databases/(default)/documents/knowledgeItems/$(itemId)).data.deletedAt == null;
       allow write: if isContentEditor() && isAllowedSize() && isAllowedDocumentType();
       allow delete: if isContentEditor();
     }

@@ -2,7 +2,7 @@
   "name": "tea-guia-inteligente",
   "version": "0.1.0",
   "private": true,
-  "description": "TEA Guia Inteligente \u2014 aplicativo educacional e informativo para fam\u00edlias, cuidadores e profissionais sobre o Transtorno do Espectro Autista.",
+  "description": "TEA Guia Inteligente — aplicativo educacional e informativo para famílias, cuidadores e profissionais sobre o Transtorno do Espectro Autista.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,35 +19,36 @@
     "firebase:seed": "node firebase/seed/seed.mjs"
   },
   "dependencies": {
+    "@google/genai": "^2.12.0",
+    "@hookform/resolvers": "3.9.0",
+    "clsx": "2.1.1",
+    "firebase": "10.13.2",
+    "firebase-admin": "12.4.0",
     "next": "14.2.15",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "firebase": "10.13.2",
-    "firebase-admin": "12.4.0",
-    "zod": "3.23.8",
     "react-hook-form": "7.53.0",
-    "@hookform/resolvers": "3.9.0",
-    "clsx": "2.1.1",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "zod": "3.23.8"
   },
   "devDependencies": {
-    "typescript": "5.5.4",
+    "@testing-library/jest-dom": "6.4.8",
+    "@testing-library/react": "16.0.0",
     "@types/node": "20.14.15",
     "@types/react": "18.3.5",
     "@types/react-dom": "18.3.0",
-    "tailwindcss": "3.4.10",
-    "postcss": "8.4.41",
+    "@vitejs/plugin-react": "4.3.1",
+    "@vitest/coverage-v8": "2.0.5",
     "autoprefixer": "10.4.20",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.15",
+    "jsdom": "24.1.1",
+    "postcss": "8.4.41",
     "prettier": "3.3.3",
     "prettier-plugin-tailwindcss": "0.6.6",
-    "vitest": "2.0.5",
-    "@vitejs/plugin-react": "4.3.1",
-    "@testing-library/react": "16.0.0",
-    "@testing-library/jest-dom": "6.4.8",
-    "jsdom": "24.1.1",
-    "@vitest/coverage-v8": "2.0.5"
+    "tailwindcss": "3.4.10",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
   },
   "engines": {
     "node": ">=18.18.0"

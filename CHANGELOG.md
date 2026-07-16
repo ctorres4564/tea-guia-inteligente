@@ -5,6 +5,19 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.3.0] - 2026-07-16
+
+### Adicionado
+- Integração de IA com SDK oficial `@google/genai` e suporte a geração de embeddings com o modelo `text-embedding-004`.
+- Busca semântica KNN integrada ao Firestore Vector Search de 768 dimensões com métrica de similaridade de cosseno e pós-filtragem eficiente em memória (por Categoria, Público-alvo e Faixa Etária).
+- Assistente Conversacional Clínico com RAG completo alimentado pelo Gemini 1.5 Flash, com streaming de caracteres em tempo real e citação explícita dos artigos utilizados.
+- Interface cliente de Chat com histórico local, Drawer de visualização rápida e banner de disclaimer educativo/LGPD.
+- Sistema de Favoritos com listagem em `/dashboard/favoritos`, operações do Firestore (`toggleFavorite`, `listFavorites`) e botão de estrela unificado.
+- Linha do tempo de Histórico de interações (buscas, perguntas feitas à IA e visualizações de artigos) sob `/dashboard/historico`, com ações rápidas de re-pesquisa e re-visualização.
+- Roteamento e linkagem ativos para Chat com IA, Favoritos e Histórico no menu lateral (`AppSidebar`).
+- Testes de integridade no Vitest, typechecking com `tsc` e conformidade de linter do Next.js sem avisos ou erros.
+- Documentações: `docs/decisions/ADR-004-embeddings.md`, `docs/architecture/embeddings.md`, `docs/architecture/search.md`, `docs/architecture/rag.md` e `docs/architecture/favorites-history.md`.
+
 ## [0.2.0] - 2026-07-15
 
 ### Adicionado

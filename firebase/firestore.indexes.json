@@ -32,5 +32,19 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "knowledgeItems",
+      "fieldPath": "embedding",
+      "indexes": [
+        {
+          "queryScope": "COLLECTION",
+          "vectorConfig": {
+            "dimension": 768,
+            "flat": {}
+          }
+        }
+      ]
+    }
+  ]
 }

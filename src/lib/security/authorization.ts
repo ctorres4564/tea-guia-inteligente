@@ -33,6 +33,26 @@ export async function getAuthorizedSession(
   return { sessionUser, profile };
 }
 
+/**
+ * Verifica, no servidor, se há uma sessão válida com conta ativa — sem
+ * restringir a um papel específico. Use para proteger rotas que qualquer
+ * usuário autenticado e ativo pode acessar (ex.: chat RAG, busca semântica).
+ *
+ * Retorna `null` se não autenticado, sem perfil ou com conta inativa/bloqueada.
+ * Nunca lança — o chamador decide a resposta de erro.
+ */
+export async function getActiveSession(): Promise<AuthorizedSession | null> {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return null;
+
+  const profile = await getProfileAsAdmin(sessionUser.uid);
+  if (!profile) return null;
+  if (profile.status !== "active") return null;
+
+  return { sessionUser, profile };
+}
+
 export const CONTENT_EDITOR_ROLES: ProfileRole[] = ["professional", "reviewer", "administrator"];
 export const REVIEWER_ROLES: ProfileRole[] = ["reviewer", "administrator"];
 export const ADMIN_ROLES: ProfileRole[] = ["administrator"];
+

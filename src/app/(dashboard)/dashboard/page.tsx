@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { Alert, Card, PageHeader } from "@/components/ui";
+import { Card, PageHeader } from "@/components/ui";
+import { SearchInterface } from "@/components/SearchInterface";
 import { siteConfig } from "@/config/site";
 import { getProfileAsAdmin } from "@/domains/users/admin-repository";
 import { getSessionUser } from "@/lib/security/session";
+import { getAdminFirestore } from "@/lib/firebase/admin";
 
 const ROLE_LABELS: Record<string, string> = {
   family: "Família / Responsável",
@@ -20,6 +22,29 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Pendente",
 };
 
+async function getCategoriesServer() {
+  try {
+    const db = getAdminFirestore();
+    const snapshot = await db
+      .collection("categories")
+      .where("status", "==", "published")
+      .orderBy("displayOrder", "asc")
+      .get();
+
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        name: data.name as string,
+        slug: data.slug as string,
+      };
+    });
+  } catch (error) {
+    console.error("Erro ao listar categorias no servidor:", error);
+    return [];
+  }
+}
+
 export default async function DashboardPage() {
   const sessionUser = await getSessionUser();
   if (!sessionUser) {
@@ -27,13 +52,20 @@ export default async function DashboardPage() {
   }
 
   const profile = await getProfileAsAdmin(sessionUser.uid);
+  const categories = await getCategoriesServer();
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title={profile ? `Olá, ${profile.fullName.split(" ")[0]}` : "Olá"}
-        description="Este é o seu painel inicial."
+        description="Pesquise orientações clínicas na base de conhecimento ou gerencie sua conta."
       />
+
+      {/* Busca Semântica Avançada com IA */}
+      <div>
+        <h3 className="text-lg font-bold text-slate-800 mb-3">Busca Inteligente com IA</h3>
+        <SearchInterface categories={categories} />
+      </div>
 
       <Card>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Sua conta</h2>
@@ -62,11 +94,6 @@ export default async function DashboardPage() {
           </div>
         </dl>
       </Card>
-
-      <Alert variant="info">
-        Os módulos de chat, busca, biblioteca, favoritos e histórico estão em desenvolvimento e
-        serão liberados nas próximas etapas do projeto.
-      </Alert>
     </div>
   );
 }

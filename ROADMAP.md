@@ -45,35 +45,27 @@ vinculadas aos conteúdos) não possui interface própria — apenas schema e
 regras já preparados desde a Fase 0/1; a importação em massa da base de
 conhecimento completa também permanece fora de escopo.
 
-## Fase 3 — Embeddings
-
+## Fase 3 — Embeddings ✅ (implementada)
 - Geração de embeddings para as fichas da base de conhecimento
 - Estratégia de atualização incremental dos embeddings
-- Avaliação de banco vetorial (ver ADR-001 — decisão pendente entre
-  Firestore Vector Search e serviço externo)
+- Avaliação de banco vetorial (ver ADR-004 — adotado Firestore Vector Search)
 
-## Fase 4 — Busca Inteligente
-
+## Fase 4 — Busca Inteligente ✅ (implementada)
 - Busca por similaridade semântica
 - Ranking de resultados
 - Filtros por categoria, público-alvo, faixa etária
 
-## Fase 5 — Chat com IA (RAG)
-
-- Integração com LLM (OpenAI/Anthropic/Gemini/OpenRouter — a definir)
-- Pipeline RAG completo: pergunta → embeddings → busca vetorial → ranking
-  → prompt → LLM → resposta
+## Fase 5 — Chat com IA (RAG) ✅ (implementada)
+- Integração com LLM (Gemini 1.5 Flash via SDK @google/genai)
+- Pipeline RAG completo: pergunta → embeddings → busca vetorial → ranking → prompt → LLM → resposta
 - Streaming de respostas
-- Exibição de referências e conteúdos relacionados
-- O LLM nunca responde apenas com conhecimento próprio — sempre a partir
-  do contexto recuperado da base clínica
+- Exibição de referências e conteúdos relacionados em modal lateral
+- O LLM responde estritamente a partir do contexto da base clínica
 
-## Fase 6 — Histórico e Favoritos (interface)
-
-- Interface de histórico de perguntas/buscas
-- Interface de favoritos
-- A estrutura de dados e as regras de segurança já foram preparadas na
-  Fase 0/1
+## Fase 6 — Histórico e Favoritos (interface) ✅ (implementada)
+- Interface de histórico de perguntas/buscas em formato de timeline
+- Interface de favoritos com gerenciamento dinâmico
+- Gravação automática de histórico de pesquisas, perguntas e leituras de fichas
 
 ## Fase 7 — Perfil da criança
 

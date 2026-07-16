@@ -14,10 +14,10 @@ interface SidebarItem {
 
 const ITEMS: SidebarItem[] = [
   { label: "Início", href: "/dashboard" },
-  { label: "Chat com IA", href: "/dashboard/chat", disabled: true },
+  { label: "Chat com IA", href: "/dashboard/chat" },
   { label: "Biblioteca", href: "/dashboard/biblioteca", disabled: true },
-  { label: "Favoritos", href: "/dashboard/favoritos", disabled: true },
-  { label: "Histórico", href: "/dashboard/historico", disabled: true },
+  { label: "Favoritos", href: "/dashboard/favoritos" },
+  { label: "Histórico", href: "/dashboard/historico" },
 ];
 
 const ADMIN_ROLES = ["professional", "reviewer", "administrator"];

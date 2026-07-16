@@ -1,0 +1,4 @@
+interface:
+  display_name: "Continuar TEA Guia"
+  short_description: "Desenvolver o TEA Guia com segurança"
+  default_prompt: "Use $continuar-tea-guia para implementar a próxima etapa do roadmap com testes e documentação."
