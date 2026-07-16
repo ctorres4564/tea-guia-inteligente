@@ -109,7 +109,15 @@ conhecimento completa também permanece fora de escopo.
 - **Rate limiting centralizado**: Utilitário em `src/lib/security/rate-limit.ts` aplicado nas rotas `/api/knowledge/chat`, `/api/knowledge/search` e `/api/knowledge/recommendations`.
 - **Monitoramento e Observabilidade**: Logger estruturado em `src/lib/observability/logger.ts` gerando logs JSON estruturados de linha única em produção e mascarando automaticamente dados pessoais/PII (em conformidade com LGPD).
 
+
+## Fase 10 — Testes Finais e Deploy ✅
+
+- **Integração Contínua (CI)**: Workflow do GitHub Actions configurado em `.github/workflows/ci.yml` para validar lint, typecheck, regras do Firebase Emulator, testes unitários e build de produção a cada commit/PR.
+- **Deploy Contínuo (CD)**: Workflow configurado em `.github/workflows/deploy.yml` para automatizar o deploy na Vercel e regras de segurança no Firebase.
+- **Documentação de Manutenção**: Criado o [deploy.md](file:///c:/tea_guia_inteligente/docs/deploy.md) com as variáveis de ambiente, secrets e TTL de cache necessários.
+
 ## Fora de escopo permanente (a menos que redefinido em PRD futuro)
+
 
 - Teleconsulta, comunidade, marketplace, gamificação, agenda, integração
   com clínicas (explicitamente fora do escopo do MVP, ver PRD seção 9).

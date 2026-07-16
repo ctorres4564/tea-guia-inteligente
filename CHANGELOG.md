@@ -5,6 +5,13 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.7.0] - 2026-07-16
+
+### Adicionado
+- **Pipeline de Integração Contínua (CI)** (Fase 10): Workflow `.github/workflows/ci.yml` configurado para rodar automaticamente lint, typecheck, testes unitários, testes de regras do Firebase Emulator e build de produção a cada PR/Push.
+- **Pipeline de Deploy Contínuo (CD)**: Workflow `.github/workflows/deploy.yml` configurado para automatizar deploy no Vercel e Firebase Rules.
+- **Documentação de Manutenção**: Criação do [deploy.md](file:///c:/tea_guia_inteligente/docs/deploy.md) contendo instruções de provisionamento de banco de dados, TTL para coleções de cache e configuração de GitHub Secrets.
+
 ## [0.6.1] - 2026-07-16
 
 ### Corrigido
