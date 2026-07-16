@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     let queryEmbedding: number[];
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+    if (!apiKey && (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true" || process.env.NODE_ENV === "development")) {
       // Mock de vetor para desenvolvimento local sem chave do Gemini
       queryEmbedding = new Array(768).fill(0).map(() => Math.random() * 0.1);
     } else {
