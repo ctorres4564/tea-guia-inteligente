@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { createHash } from "crypto";
+import { searchScientificReferences } from "@/services/scientificSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,15 @@ const RATE_LIMIT_CONFIG = { maxRequests: 20, windowMs: 60_000 };
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora de expiração de cache
 
 // Instrução básica de sistema para blindagem do LLM e disclaimer clínico
+// Instrução básica de sistema para blindagem do LLM e disclaimer clínico
 const SYSTEM_INSTRUCTION_BASE = `Você é o assistente virtual especializado do aplicativo "TEA Guia Inteligente".
-Sua principal função é responder perguntas de pais, educadores e profissionais sobre o Transtorno do Espectro Autista (TEA) baseando-se ESTREITAMENTE no contexto de fichas clínicas fornecido abaixo.
+Sua principal função é responder perguntas de pais, educadores e profissionais sobre o Transtorno do Espectro Autista (TEA) baseando-se no contexto de fichas clínicas e artigos científicos fornecidos abaixo.
 
 DIRETRIZES OBRIGATÓRIAS:
 1. DISCLAIMER CLÍNICO: Inicie ou conclua sua resposta destacando que as orientações fornecidas são puramente educativas e informativas, não substituindo o diagnóstico, a avaliação ou o tratamento médico e terapêutico especializado por profissionais habilitados.
-2. LIMITAÇÃO DE CONTEXTO: Responda a pergunta utilizando APENAS os fatos e orientações presentes nos artigos fornecidos no contexto clínico abaixo. Não invente informações, não utilize conhecimento geral não validado fora do contexto e não faça suposições clínicas.
-3. SE O CONTEXTO FOR INSUFICIENTE: Se os artigos fornecidos não contiverem a resposta para a pergunta do usuário, responda honestamente: "Não encontrei informações validadas sobre este assunto específico na base clínica do guia. Recomendo consultar um pediatra ou especialista no neurodesenvolvimento."
-4. CITAÇÃO DAS FONTES: Ao formular a resposta baseada em um ou mais artigos, cite explicitamente o título de cada artigo que embasou as orientações.
+2. LIMITAÇÃO DE CONTEXTO: Responda a pergunta utilizando APENAS os fatos e orientações presentes no CONTEXTO CLÍNICO DE REFERÊNCIA e nas REFERÊNCIAS CIENTÍFICAS EXTERNAS fornecidas abaixo. Não invente informações e não faça suposições clínicas sem embasamento nos textos fornecidos.
+3. SE O CONTEXTO FOR INSUFICIENTE: Se os artigos e referências fornecidos não contiverem a resposta para a pergunta do usuário, responda honestamente: "Não encontrei informações validadas sobre este assunto específico na base clínica do guia nem nas pesquisas científicas recentes. Recomendo consultar um pediatra ou especialista no neurodesenvolvimento."
+4. CITAÇÃO DAS FONTES: Ao formular a resposta baseada em um ou mais artigos, cite explicitamente o título de cada artigo. Para artigos científicos externos da internet, você DEVE incluir o link clicável direto para o artigo usando o formato Markdown [Título do Artigo](URL).
 5. PROIBIÇÃO DE DIAGNÓSTICOS: Não forneça qualquer tipo de diagnóstico definitivo, triagem de nível ou recomendação/prescrição de tratamentos farmacológicos (medicamentos, dosagens).`;
 
 // Schema Zod para validar e limitar o payload do chat
@@ -265,7 +267,7 @@ export async function POST(request: NextRequest) {
 
     // RAG - Passo 3: Montagem do contexto e das referências (fontes)
     let contextText = "";
-    const sources = validItems.map((item) => ({
+    const localSources = validItems.map((item) => ({
       id: item.id,
       title: item.title,
       slug: item.slug,
@@ -278,13 +280,38 @@ export async function POST(request: NextRequest) {
       contextText = "\n\nNÃO há artigos validados correspondentes ao termo no contexto.";
     }
 
+    // Busca referências na internet (Europe PMC / PubMed)
+    let scientificArticlesText = "";
+    const externalSources: Array<{ id: string; title: string; url: string; external: boolean }> = [];
+    if (apiKey) {
+      const externalRefs = await searchScientificReferences(message, apiKey);
+      if (externalRefs.length > 0) {
+        scientificArticlesText = "\n\nREFERÊNCIAS CIENTÍFICAS EXTERNAS (INTERNET):\n" +
+          externalRefs.map((art, idx) => `--- ARTIGO EXTERNO ${idx + 1}: ${art.title} ---\nAutores: ${art.authors}\nPeriódico: ${art.journal} (${art.year})\nResumo: ${art.abstractText}\nLink: ${art.url}`).join("\n\n");
+        externalRefs.forEach((art, idx) => {
+          externalSources.push({
+            id: `ext-${idx}-${Date.now()}`,
+            title: `${art.title} (${art.journal}, ${art.year})`,
+            url: art.url,
+            external: true,
+          });
+        });
+      }
+    }
+
+    // Combina fontes locais e externas sob a variável comum sources
+    const sources = [
+      ...localSources.map(s => ({ ...s, external: false })),
+      ...externalSources
+    ];
+
     // Fase 7 — se um perfil de criança foi selecionado (e pertence ao
     // usuário autenticado), adiciona um bloco curto de contexto para
     // calibrar o tom da resposta. Nunca afeta a busca vetorial nem os
     // artigos recuperados — apenas a formulação da resposta final.
     const childContextBlock = await buildChildContextBlock(sessionUser.uid, childId);
 
-    const systemInstruction = SYSTEM_INSTRUCTION_BASE + contextText + childContextBlock;
+    const systemInstruction = SYSTEM_INSTRUCTION_BASE + contextText + scientificArticlesText + childContextBlock;
 
     // RAG - Passo 4: Formatação do histórico para a API do Gemini
     // O histórico já foi validado pelo schema Zod (máx. 10 items, role e content validados)
