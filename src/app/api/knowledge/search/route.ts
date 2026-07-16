@@ -137,7 +137,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const backup = {
+        GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+        FIREBASE_ADMIN_PROJECT_ID: process.env.FIREBASE_ADMIN_PROJECT_ID,
+        GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
+        GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
+      };
+
       try {
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        delete process.env.FIREBASE_ADMIN_PROJECT_ID;
+        delete process.env.GCLOUD_PROJECT;
+        delete process.env.GOOGLE_CLOUD_PROJECT;
+
         const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.embedContent({
           model: "gemini-embedding-2",
@@ -161,6 +173,13 @@ export async function POST(request: NextRequest) {
           { error: "Falha na comunicação com o serviço de embeddings da IA." },
           { status: 502 }
         );
+      } finally {
+        Object.keys(backup).forEach((key) => {
+          const val = backup[key as keyof typeof backup];
+          if (val !== undefined) {
+            process.env[key] = val;
+          }
+        });
       }
     }
 
