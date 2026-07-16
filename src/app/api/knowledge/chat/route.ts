@@ -304,6 +304,96 @@ export async function POST(request: NextRequest) {
             external: true,
           });
         });
+
+        // Se não houver nenhum artigo validado local correspondente, gera e insere a ficha no Firestore em background para enriquecer a base
+        if (validItems.length === 0 && externalRefs[0]) {
+          try {
+            const ai = new GoogleGenAI({ apiKey, vertexai: false });
+            const primeArt = externalRefs[0];
+            const consolidationPrompt = `Consolide as seguintes referências científicas sobre o autismo e gere um artigo clínico prático em PORTUGUÊS.
+Artigo: "${primeArt.title}"
+Resumo original: "${primeArt.abstractText}"
+Autores: "${primeArt.authors}"
+Ano/Jornal: "${primeArt.year} / ${primeArt.journal}"
+
+Retorne uma estrutura JSON válida exatamente com os seguintes campos (sem tags de código markdown):
+{
+  "title": "Título prático, amigável e informativo da ficha em português",
+  "summary": "Resumo de até 350 caracteres das orientações em português",
+  "content": "Conteúdo clínico prático detalhado com orientações para a família (mínimo de 3 parágrafos, formatado em português)",
+  "evidenceLevel": "Qualidade da evidência científica. Deve ser obrigatoriamente um destes: 'low', 'moderate', 'high' ou 'expert_consensus'",
+  "ageRange": "Faixa etária recomendada, ex: 'Todas as idades', '2 a 6 anos'",
+  "tags": ["lista", "de", "palavras-chave", "relevantes"]
+}`;
+
+            const genRes = await ai.models.generateContent({
+              model: "gemini-1.5-flash",
+              contents: consolidationPrompt,
+              config: {
+                responseMimeType: "application/json",
+                temperature: 0.2
+              }
+            });
+
+            const genText = genRes.text;
+            if (genText) {
+              const generatedJson = JSON.parse(genText.trim());
+              const slugify = (text: string) => text
+                .normalize("NFD")
+                .replace(/[̀-ͯ]/g, "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "");
+                
+              const itemSlug = slugify(generatedJson.title || `chat-auto-${Date.now()}`);
+              const docId = `auto-${itemSlug}`;
+              const docRef = db.collection("knowledgeItems").doc(docId);
+              
+              const docSnap = await docRef.get();
+              if (!docSnap.exists) {
+                const categoriesSnap = await db.collection("categories").limit(1).get();
+                const defaultCategoryId = categoriesSnap.docs[0]?.id || "geral";
+                
+                const textToEmbed = `${generatedJson.title}\n${generatedJson.summary}\n${generatedJson.content}\nTags: ${(generatedJson.tags || []).join(", ")}`;
+                const embeddingResponse = await ai.models.embedContent({
+                  model: "gemini-embedding-2",
+                  contents: textToEmbed,
+                  config: {
+                    outputDimensionality: 768,
+                  },
+                });
+                
+                const newEmbedding = embeddingResponse.embeddings?.[0]?.values;
+                if (newEmbedding) {
+                  await docRef.set({
+                    categoryId: defaultCategoryId,
+                    title: generatedJson.title.substring(0, 160),
+                    slug: itemSlug.substring(0, 160),
+                    summary: generatedJson.summary.substring(0, 400),
+                    content: generatedJson.content,
+                    targetAudience: ["family", "general"],
+                    ageRange: (generatedJson.ageRange || "Todas as idades").substring(0, 40),
+                    tags: Array.isArray(generatedJson.tags) ? generatedJson.tags : [],
+                    evidenceLevel: ["low", "moderate", "high", "expert_consensus"].includes(generatedJson.evidenceLevel) ? generatedJson.evidenceLevel : "high",
+                    reviewStatus: "published",
+                    version: 1,
+                    createdBy: "auto-ingest-agent",
+                    deletedAt: null,
+                    attachments: [],
+                    createdAt: FieldValue.serverTimestamp(),
+                    updatedAt: FieldValue.serverTimestamp(),
+                    embedding: FieldValue.vector(newEmbedding),
+                    embeddingVersion: 1
+                  });
+                  logger.info("Nova ficha clínica gerada no chat e ingerida com sucesso no Firestore", { docId });
+                }
+              }
+            }
+          } catch (eIngest) {
+            console.error("Erro ao processar auto-ingestão em background do chat:", eIngest);
+          }
+        }
       }
     }
 

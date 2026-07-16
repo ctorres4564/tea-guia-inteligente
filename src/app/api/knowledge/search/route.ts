@@ -277,16 +277,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 4. Reduz similaridade de corte para capturar correspondências mais distantes (0.45)
-      if (filteredResults.length === 0) {
-        filteredResults = applyFilters(results, false, false, false, 0.45);
-        if (filteredResults.length > 0) {
-          filtersRelaxed = ["similarity"];
-          if (ageRange) filtersRelaxed.push("ageRange");
-          if (targetAudience) filtersRelaxed.push("targetAudience");
-          if (categoryId) filtersRelaxed.push("categoryId");
-        }
-      }
+      // NOTA: O passo 4 de redução de corte de similaridade para 0.45 foi removido.
+      // Se a similaridade é menor que 0.65, consideramos que não há artigo local relevante,
+      // forçando a ativação do fluxo RAG híbrido na internet.
     }
 
     // Busca referências na internet (Europe PMC) se a chave estiver presente e for uma busca textual
@@ -294,19 +287,118 @@ export async function POST(request: NextRequest) {
     if (apiKey && q && q.trim().length >= 2) {
       try {
         const externalRefs = await searchScientificReferences(q, apiKey);
-        externalResults = externalRefs.map((art, idx) => ({
-          id: `ext-${idx}-${Date.now()}`,
-          title: `[Internet] ${art.title}`,
-          slug: `external-${idx}`,
-          summary: `${art.authors} (${art.year}) - ${art.journal}`,
-          content: art.abstractText,
-          evidenceLevel: "high",
-          targetAudience: ["general"],
-          ageRange: "Todas as idades",
-          similarity: 0.8, // Similaridade mockada para ficar bem posicionado
-          url: art.url,
-          external: true,
-        }));
+        if (externalRefs.length > 0) {
+          const ai = new GoogleGenAI({ apiKey, vertexai: false });
+          
+          // Geramos 1 ficha estruturada de alta qualidade a partir do artigo mais relevante
+          const primeArt = externalRefs[0];
+          if (primeArt) {
+            // Solicita consolidação e tradução formatada de acordo com as regras de negócio
+            const consolidationPrompt = `Consolide as seguintes referências científicas sobre o autismo e gere um artigo clínico prático em PORTUGUÊS.
+Artigo: "${primeArt.title}"
+Resumo original: "${primeArt.abstractText}"
+Autores: "${primeArt.authors}"
+Ano/Jornal: "${primeArt.year} / ${primeArt.journal}"
+
+Retorne uma estrutura JSON válida exatamente com os seguintes campos (sem tags de código markdown):
+{
+  "title": "Título prático, amigável e informativo da ficha em português",
+  "summary": "Resumo de até 350 caracteres das orientações em português",
+  "content": "Conteúdo clínico prático detalhado com orientações para a família (mínimo de 3 parágrafos, formatado em português)",
+  "evidenceLevel": "Qualidade da evidência científica. Deve ser obrigatoriamente um destes: 'low', 'moderate', 'high' ou 'expert_consensus'",
+  "ageRange": "Faixa etária recomendada, ex: 'Todas as idades', '2 a 6 anos'",
+  "tags": ["lista", "de", "palavras-chave", "relevantes"]
+}`;
+
+          const generationResponse = await ai.models.generateContent({
+            model: "gemini-1.5-flash",
+            contents: consolidationPrompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.2
+            }
+          });
+
+          const generatedText = generationResponse.text;
+          if (generatedText) {
+            try {
+              const generatedJson = JSON.parse(generatedText.trim());
+              
+              // Gerar Slug amigável
+              const slugify = (text: string) => text
+                .normalize("NFD")
+                .replace(/[̀-ͯ]/g, "")
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "");
+                
+              const itemSlug = slugify(generatedJson.title || `doc-auto-${Date.now()}`);
+              
+              // Verifica se já não foi criado um documento idêntico com o mesmo slug para evitar duplicatas
+              const docId = `auto-${itemSlug}`;
+              const docRef = db.collection("knowledgeItems").doc(docId);
+              const docSnap = await docRef.get();
+              
+              if (!docSnap.exists) {
+                // Obter ID da categoria "Geral" ou usar primeira cadastrada
+                const categoriesSnap = await db.collection("categories").limit(1).get();
+                const defaultCategoryId = categoriesSnap.docs[0]?.id || "geral";
+                
+                // Gera o embedding do novo conteúdo gerado
+                const textToEmbed = `${generatedJson.title}\n${generatedJson.summary}\n${generatedJson.content}\nTags: ${(generatedJson.tags || []).join(", ")}`;
+                const embeddingResponse = await ai.models.embedContent({
+                  model: "gemini-embedding-2",
+                  contents: textToEmbed,
+                  config: {
+                    outputDimensionality: 768,
+                  },
+                });
+                
+                const newEmbedding = embeddingResponse.embeddings?.[0]?.values;
+                
+                if (newEmbedding) {
+                  const newDocData = {
+                    categoryId: defaultCategoryId,
+                    title: generatedJson.title.substring(0, 160),
+                    slug: itemSlug.substring(0, 160),
+                    summary: generatedJson.summary.substring(0, 400),
+                    content: generatedJson.content,
+                    targetAudience: ["family", "general"],
+                    ageRange: (generatedJson.ageRange || "Todas as idades").substring(0, 40),
+                    tags: Array.isArray(generatedJson.tags) ? generatedJson.tags : [],
+                    evidenceLevel: ["low", "moderate", "high", "expert_consensus"].includes(generatedJson.evidenceLevel) ? generatedJson.evidenceLevel : "high",
+                    reviewStatus: "published",
+                    version: 1,
+                    createdBy: "auto-ingest-agent",
+                    deletedAt: null,
+                    attachments: [],
+                    createdAt: FieldValue.serverTimestamp(),
+                    updatedAt: FieldValue.serverTimestamp(),
+                    embedding: FieldValue.vector(newEmbedding),
+                    embeddingVersion: 1
+                  };
+                  
+                  await docRef.set(newDocData);
+                  logger.info("Nova ficha clínica gerada na busca e ingerida com sucesso no Firestore", { docId });
+                  
+                  // Adiciona o novo artigo diretamente nos resultados da busca com similaridade alta
+                  externalResults.push({
+                    ...newDocData,
+                    id: docId,
+                    similarity: 0.95,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    embedding: undefined // remove vetor antes do retorno
+                  });
+                }
+              }
+            } catch (errJson) {
+              console.error("Falha ao parsear ou salvar ficha gerada em JSON:", errJson);
+            }
+          }
+          }
+        }
       } catch (err) {
         console.error("Erro ao buscar referências externas para busca do dashboard:", err);
       }
