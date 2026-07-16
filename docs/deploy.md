@@ -29,6 +29,9 @@ Crie o projeto no painel da Vercel a partir do repositório conectado. Configure
 | Variável | Descrição | Exemplo |
 |---|---|---|
 | `GEMINI_API_KEY` | Chave de API de produção do Google AI Studio para IA e Embeddings. | `AIzaSy...` |
+| `LLM_PROVIDER` | Define o provedor de linguagem do chat (gemini ou openrouter). Padrão é gemini. | `openrouter` |
+| `OPENROUTER_API_KEY` | Chave da API do OpenRouter. Obrigatório se LLM_PROVIDER=openrouter. | `sk-or-v1-...` |
+| `OPENROUTER_MODEL` | Modelo a ser consumido via OpenRouter. Padrão é deepseek/deepseek-chat. | `deepseek/deepseek-chat` |
 | `FIREBASE_PROJECT_ID` | ID do projeto Firebase de produção. | `tea-guia-prod` |
 | `FIREBASE_CLIENT_EMAIL` | Email da conta de serviço de produção. | `firebase-adminsdk-...@tea-guia-prod.iam.gserviceaccount.com` |
 | `FIREBASE_PRIVATE_KEY` | Chave privada da conta de serviço (com as quebras de linha `\n` preservadas). | `-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqh...` |

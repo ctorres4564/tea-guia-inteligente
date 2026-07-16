@@ -300,7 +300,10 @@ export async function POST(request: NextRequest) {
     });
 
     // RAG - Passo 5: Geração de resposta com streaming
-    if (!apiKey && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+    const provider = process.env.LLM_PROVIDER || "gemini";
+    const chatApiKey = provider === "openrouter" ? process.env.OPENROUTER_API_KEY : process.env.GEMINI_API_KEY;
+
+    if (!chatApiKey && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
       // Em modo emulador sem chave, simulamos o stream de resposta
       const firstItem = validItems[0];
       const mockResponse = firstItem
@@ -336,14 +339,154 @@ export async function POST(request: NextRequest) {
       return new Response(stream, { headers });
     }
 
-    if (!apiKey) {
+    if (provider === "openrouter") {
+      if (!chatApiKey) {
+        return NextResponse.json(
+          { error: "Chave OPENROUTER_API_KEY não configurada no servidor." },
+          { status: 500 }
+        );
+      }
+
+      const openRouterModel = process.env.OPENROUTER_MODEL || "deepseek/deepseek-chat";
+      const messages = [
+        { role: "system", content: systemInstruction },
+        ...geminiContents.map((content) => ({
+          role: content.role === "model" ? "assistant" : "user",
+          content: content.parts[0]?.text || "",
+        })),
+      ];
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${chatApiKey}`,
+          "HTTP-Referer": "https://github.com/ctorres4564/tea-guia-inteligente",
+          "X-Title": "TEA Guia Inteligente",
+        },
+        body: JSON.stringify({
+          model: openRouterModel,
+          messages,
+          temperature: 0.2,
+          stream: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error("Erro na API do OpenRouter", { errorText });
+        return NextResponse.json(
+          { error: "Erro ao comunicar com o OpenRouter/DeepSeek." },
+          { status: 502 }
+        );
+      }
+
+      const STREAM_TIMEOUT_MS = 30_000;
+      const encoder = new TextEncoder();
+      let streamClosed = false;
+      let fullResponse = "";
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const timeoutId = setTimeout(() => {
+            if (!streamClosed) {
+              streamClosed = true;
+              try {
+                controller.enqueue(
+                  encoder.encode("\n\n[AVISO: A resposta foi interrompida por tempo limite. Tente uma pergunta mais específica.]")
+                );
+                controller.close();
+              } catch {}
+            }
+          }, STREAM_TIMEOUT_MS);
+
+          try {
+            const reader = response.body?.getReader();
+            if (!reader) {
+              throw new Error("Nenhum stream de leitura disponivel no response.");
+            }
+
+            const decoder = new TextDecoder("utf-8");
+            let buffer = "";
+
+            while (!streamClosed) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                const cleanedLine = line.trim();
+                if (!cleanedLine) continue;
+                if (cleanedLine === "data: [DONE]") {
+                  streamClosed = true;
+                  break;
+                }
+
+                if (cleanedLine.startsWith("data: ")) {
+                  try {
+                    const parsed = JSON.parse(cleanedLine.substring(6));
+                    const content = parsed.choices?.[0]?.delta?.content || "";
+                    if (content) {
+                      fullResponse += content;
+                      controller.enqueue(encoder.encode(content));
+                    }
+                  } catch (e) {
+                    // Ignora parsing invalido de chunks parciais
+                  }
+                }
+              }
+            }
+
+            if (!streamClosed && fullResponse.trim().length > 0) {
+              db.collection("chatResponseCache").doc(queryHash).set({
+                userId: sessionUser.uid,
+                queryHash,
+                response: fullResponse,
+                sources,
+                createdAt: FieldValue.serverTimestamp(),
+              }).then(() => {
+                logger.info("Chat cache populated", { userId: sessionUser.uid, queryHash });
+              }).catch(err => {
+                logger.warn("Failed to write response to cache", { userId: sessionUser.uid }, err);
+              });
+            }
+          } catch (err) {
+            logger.error("Erro durante o processamento do stream do OpenRouter", { userId: sessionUser.uid }, err);
+            if (!streamClosed) {
+              try {
+                controller.enqueue(encoder.encode("\n[ERRO: Conexão interrompida com o serviço de IA.]"));
+              } catch {}
+            }
+          } finally {
+            clearTimeout(timeoutId);
+            if (!streamClosed) {
+              streamClosed = true;
+              try {
+                controller.close();
+              } catch {}
+            }
+          }
+        },
+      });
+
+      const headers = new Headers();
+      headers.set("Content-Type", "text/plain; charset=utf-8");
+      headers.set("x-sources-metadata", JSON.stringify(sources));
+
+      return new Response(stream, { headers });
+    }
+
+    if (!chatApiKey) {
       return NextResponse.json(
         { error: "Chave GEMINI_API_KEY não configurada no servidor." },
         { status: 500 }
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: chatApiKey });
     const responseStream = await ai.models.generateContentStream({
       model: "gemini-1.5-flash",
       contents: geminiContents,
@@ -436,3 +579,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
