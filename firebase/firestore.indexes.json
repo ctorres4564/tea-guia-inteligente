@@ -23,28 +23,7 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "displayOrder", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "items",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
     }
   ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "knowledgeItems",
-      "fieldPath": "embedding",
-      "indexes": [
-        {
-          "queryScope": "COLLECTION",
-          "vectorConfig": {
-            "dimension": 768,
-            "flat": {}
-          }
-        }
-      ]
-    }
-  ]
+  "fieldOverrides": []
 }
