@@ -67,32 +67,32 @@ export default async function DashboardPage() {
 
       {/* Busca Semântica Avançada com IA */}
       <div>
-        <h3 className="text-lg font-bold text-slate-800 mb-3">Busca Inteligente com IA</h3>
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3">Busca Inteligente com IA</h3>
         <SearchInterface categories={categories} />
       </div>
 
       <Card>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Sua conta</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sua conta</h2>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-xs text-slate-500">Nome</dt>
-            <dd className="text-sm font-medium text-slate-900">{profile?.fullName ?? "—"}</dd>
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Nome</dt>
+            <dd className="text-sm font-medium text-slate-900 dark:text-white">{profile?.fullName ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">E-mail</dt>
-            <dd className="text-sm font-medium text-slate-900">
+            <dt className="text-xs text-slate-500 dark:text-slate-400">E-mail</dt>
+            <dd className="text-sm font-medium text-slate-900 dark:text-white">
               {profile?.email ?? sessionUser.email ?? "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Papel</dt>
-            <dd className="text-sm font-medium text-slate-900">
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Papel</dt>
+            <dd className="text-sm font-medium text-slate-900 dark:text-white">
               {profile ? ROLE_LABELS[profile.role] ?? profile.role : "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-slate-500">Status</dt>
-            <dd className="text-sm font-medium text-slate-900">
+            <dt className="text-xs text-slate-500 dark:text-slate-400">Status</dt>
+            <dd className="text-sm font-medium text-slate-900 dark:text-white">
               {profile ? STATUS_LABELS[profile.status] ?? profile.status : "—"}
             </dd>
           </div>

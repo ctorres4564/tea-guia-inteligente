@@ -257,7 +257,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
           {/* Filtros Avançados */}
           <div className="grid gap-3 sm:grid-cols-3 pt-2 border-t border-slate-100">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Categoria
               </label>
               <Select
@@ -275,7 +275,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Público-alvo
               </label>
               <Select
@@ -291,7 +291,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                 Faixa Etária
               </label>
               <Input
@@ -321,7 +321,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
           results.length > 0 ? (
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center px-1">
-                <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
+                <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Resultados Encontrados ({results.length})
                 </h3>
                 <span className="text-xs text-slate-400">
@@ -346,7 +346,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="flex flex-col flex-1">
                             <div className="flex items-center gap-2">
-                              <h4 className="text-lg font-bold text-slate-900 leading-tight">
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                                 {item.title}
                               </h4>
                               {/* Botão de Estrela de Favorito */}
@@ -379,7 +379,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
                         </div>
 
                         {/* Resumo/Descrição */}
-                        <p className="text-sm text-slate-600 leading-relaxed">
+                        <p className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed">
                           {item.summary}
                         </p>
 
@@ -401,7 +401,7 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
 
                           <Button
                             onClick={() => handleOpenArticle(item)}
-                            className="bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 font-semibold px-4 py-1.5 h-auto text-xs"
+                            className="bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900 dark:hover:bg-indigo-900/60 dark:text-indigo-300 font-semibold px-4 py-1.5 h-auto text-xs"
                           >
                             Ler Ficha Completa
                           </Button>
@@ -428,13 +428,13 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
       {/* Drawer lateral de visualização do Artigo completo */}
       {activeArticle && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-end z-50">
-          <div className="w-[85%] md:w-[450px] bg-white h-full shadow-2xl flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-200">
-            <div className="flex justify-between items-start border-b border-slate-100 pb-4 mb-4">
+          <div className="w-[85%] md:w-[450px] bg-white dark:bg-slate-900 border-l dark:border-slate-800 h-full shadow-2xl flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-200 text-slate-900 dark:text-slate-100">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                   Artigo Clínico Completo
                 </span>
-                <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                <h3 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
                   {activeArticle.title}
                 </h3>
               </div>
@@ -453,17 +453,17 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
                 {EVIDENCE_LEVEL_LABELS[activeArticle.evidenceLevel]?.label || activeArticle.evidenceLevel}
               </span>
               {activeArticle.ageRange && (
-                <span className="bg-slate-100 text-slate-600 border border-slate-200 rounded-md px-2.5 py-0.5 text-xs font-medium">
+                <span className="bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-350 dark:border-slate-700 rounded-md px-2.5 py-0.5 text-xs font-medium">
                   Idade: {activeArticle.ageRange}
                 </span>
               )}
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-600 mb-4 leading-relaxed italic">
+            <div className="bg-slate-50 border border-slate-100 dark:bg-slate-950 dark:border-slate-800 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-350 mb-4 leading-relaxed italic">
               <strong>Resumo:</strong> {activeArticle.summary}
             </div>
 
-            <div className="text-sm text-slate-800 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100">
+            <div className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100 dark:border-slate-850">
               {activeArticle.content}
             </div>
 
@@ -489,12 +489,12 @@ export function SearchInterface({ categories }: SearchInterfaceProps) {
                           drawerElement.scrollTop = 0;
                         }
                       }}
-                      className="group cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 p-3 hover:bg-indigo-50/30 hover:border-indigo-100 transition-all duration-200"
+                      className="group cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950 p-3 hover:bg-indigo-50/30 hover:border-indigo-100 dark:hover:bg-indigo-950/20 dark:hover:border-indigo-900 transition-all duration-200"
                     >
-                      <h5 className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                      <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
                         {item.title}
                       </h5>
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
                         {item.summary}
                       </p>
                     </div>

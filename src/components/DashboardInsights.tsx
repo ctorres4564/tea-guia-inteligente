@@ -207,9 +207,9 @@ export function DashboardInsights() {
       {/* Coluna de Recomendações (2/3 da largura) */}
       <div className="md:col-span-2 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-800">Recomendado para Você</h3>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Recomendado para Você</h3>
           {hasProfile && (
-            <span className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-xs bg-indigo-50 border border-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/60 dark:text-indigo-300 px-2 py-0.5 rounded-full font-semibold">
               Personalizado via Perfil
             </span>
           )}
@@ -241,21 +241,21 @@ export function DashboardInsights() {
                       </svg>
                     </button>
                   </div>
-                  <h4 className="font-bold text-slate-900 leading-tight text-sm line-clamp-2">
+                  <h4 className="font-bold text-slate-900 dark:text-white leading-tight text-sm line-clamp-2">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-350 line-clamp-3 leading-relaxed">
                     {item.summary}
                   </p>
                 </div>
 
                 <div className="border-t border-slate-100 pt-3 mt-3 flex flex-col gap-2">
-                  <p className="text-[10px] text-slate-500 italic font-medium leading-tight">
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 italic font-medium leading-tight">
                     {item.recommendationReason}
                   </p>
                   <Button
                     onClick={() => setActiveArticle(item)}
-                    className="w-full text-xs font-semibold py-1 h-auto bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 mt-1"
+                    className="w-full text-xs font-semibold py-1 h-auto bg-indigo-50 border border-indigo-100 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900/50 dark:hover:bg-indigo-900/60 dark:text-indigo-300 mt-1"
                   >
                     Ler Ficha Completa
                   </Button>
@@ -272,7 +272,7 @@ export function DashboardInsights() {
 
       {/* Coluna de Notificações / Novidades (1/3 da largura) */}
       <div className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-slate-800">Novidades e Alertas</h3>
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Novidades e Alertas</h3>
 
         {notifications.length > 0 ? (
           <div className="flex flex-col gap-3">
@@ -284,8 +284,8 @@ export function DashboardInsights() {
                   onClick={() => handleOpenArticleFromNotification(notif)}
                   className={`relative cursor-pointer border rounded-xl p-3.5 flex flex-col gap-1.5 transition-all duration-200 ${
                     isUnread
-                      ? "bg-indigo-50/40 border-indigo-100 hover:bg-indigo-50/60 shadow-xs"
-                      : "bg-white border-slate-100 hover:border-slate-200"
+                      ? "bg-indigo-50/40 border-indigo-100 hover:bg-indigo-50/60 shadow-xs dark:bg-indigo-950/20 dark:border-indigo-900/50 dark:hover:bg-indigo-950/40"
+                      : "bg-white border-slate-100 hover:border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-slate-750"
                   }`}
                 >
                   {isUnread && (
@@ -294,13 +294,13 @@ export function DashboardInsights() {
                   <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-600">
                     Novo Conteúdo
                   </span>
-                  <h4 className="text-xs font-bold text-slate-900 leading-snug pr-3">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug pr-3">
                     {notif.title}
                   </h4>
-                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-350 line-clamp-2 leading-relaxed">
                     {notif.summary}
                   </p>
-                  <span className="text-[10px] text-slate-400 font-medium">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                     {notif.createdAt ? new Date(notif.createdAt.seconds * 1000).toLocaleDateString("pt-BR") : ""}
                   </span>
                 </div>
@@ -317,14 +317,14 @@ export function DashboardInsights() {
       {/* Drawer lateral de visualização do Artigo completo (Copiado da SearchInterface para consistência premium) */}
       {activeArticle && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex justify-end z-50">
-          <div className="w-[85%] md:w-[450px] bg-white h-full shadow-2xl flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-200">
-            <div className="flex justify-between items-start border-b border-slate-100 pb-4 mb-4">
+          <div className="w-[85%] md:w-[450px] bg-white dark:bg-slate-900 border-l dark:border-slate-800 h-full shadow-2xl flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-200 text-slate-900 dark:text-slate-100">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
               <div className="flex flex-col gap-1.5 flex-1">
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
                   Artigo Clínico Recomendado
                 </span>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight">
                     {activeArticle.title}
                   </h3>
                   <button
@@ -354,17 +354,17 @@ export function DashboardInsights() {
                 {EVIDENCE_LEVEL_LABELS[activeArticle.evidenceLevel]?.label || activeArticle.evidenceLevel}
               </span>
               {activeArticle.ageRange && (
-                <span className="bg-slate-100 text-slate-600 border border-slate-200 rounded-md px-2.5 py-0.5 text-xs font-medium">
+                <span className="bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-350 dark:border-slate-700 rounded-md px-2.5 py-0.5 text-xs font-medium">
                   Idade: {activeArticle.ageRange}
                 </span>
               )}
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-600 mb-4 leading-relaxed italic">
+            <div className="bg-slate-50 border border-slate-100 dark:bg-slate-950 dark:border-slate-800 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-350 mb-4 leading-relaxed italic">
               <strong>Resumo:</strong> {activeArticle.summary}
             </div>
 
-            <div className="text-sm text-slate-800 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100">
+            <div className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed pb-4 border-b border-slate-100 dark:border-slate-850">
               {activeArticle.content}
             </div>
 
@@ -389,12 +389,12 @@ export function DashboardInsights() {
                           drawerElement.scrollTop = 0;
                         }
                       }}
-                      className="group cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 p-3 hover:bg-indigo-50/30 hover:border-indigo-100 transition-all duration-200"
+                      className="group cursor-pointer rounded-lg border border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950 p-3 hover:bg-indigo-50/30 hover:border-indigo-100 dark:hover:bg-indigo-950/20 dark:hover:border-indigo-900 transition-all duration-200"
                     >
-                      <h5 className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
+                      <h5 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
                         {item.title}
                       </h5>
-                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
                         {item.summary}
                       </p>
                     </div>
