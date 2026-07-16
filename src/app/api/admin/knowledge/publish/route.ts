@@ -99,9 +99,15 @@ export async function POST(request: NextRequest) {
     });
 
     // 7. Dispara a geração do embedding em background (assíncrono)
-    generateAndSaveEmbedding(id, data.title || "", data.summary || "", data.content || "", data.tags || []).catch((err) => {
+    const embeddingPromise = generateAndSaveEmbedding(id, data.title || "", data.summary || "", data.content || "", data.tags || []).catch((err) => {
       logger.error("Falha no processamento de embedding assíncrono", { itemId: id }, err);
     });
+
+    if (typeof (request as any).waitUntil === "function") {
+      (request as any).waitUntil(embeddingPromise);
+    } else if (typeof (request as any).context?.waitUntil === "function") {
+      (request as any).context.waitUntil(embeddingPromise);
+    }
 
     logger.info("Artigo clínico publicado com sucesso. Processando embedding em background.", { itemId: id });
     return NextResponse.json({ success: true });

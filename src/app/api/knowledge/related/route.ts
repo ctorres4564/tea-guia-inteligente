@@ -7,18 +7,18 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getActiveSession } from "@/lib/security/authorization";
 import { mapFirebaseError } from "@/lib/errors/firebase-errors";
 import { knowledgeItemSchema } from "@/lib/validation/knowledge.schema";
+import { logger } from "@/lib/observability/logger";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SIMILARITY_THRESHOLD = 0.50; // Limiar mais generoso para relacionados
+const RATE_LIMIT_CONFIG = { maxRequests: 40, windowMs: 60_000 };
 
 /**
  * Route Handler para obter conteúdos clinicamente relacionados (busca vetorial).
  * Apenas usuários autenticados e ativos têm acesso.
- *
- * Aceita payload JSON com:
- * - itemId: ID do item atual para o qual encontrar relacionados (string, obrigatório)
- * - limit: limite de resultados (default 3)
  */
 export async function POST(request: NextRequest) {
+  let userId = "unknown";
   try {
     // 1. Valida autenticação
     const activeSession = await getActiveSession();
@@ -26,6 +26,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Acesso negado. Requer autenticação e conta ativa." },
         { status: 401 }
+      );
+    }
+
+    // 1b. Rate limit centralizado (40 requisições/min)
+    const { sessionUser } = activeSession;
+    userId = sessionUser.uid;
+    const rateLimitRes = checkRateLimit(`related:${userId}`, RATE_LIMIT_CONFIG);
+    if (!rateLimitRes.success) {
+      logger.warn("Related content rate limit exceeded", { userId });
+      return NextResponse.json(
+        { error: "Limite de requisições excedido. Aguarde 1 minuto." },
+        { status: 429 }
       );
     }
 
@@ -136,7 +148,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error) {
-    console.error("Erro ao obter conteúdos relacionados:", error);
+    logger.error("Erro ao obter conteúdos relacionados", { userId }, error);
     const mappedError = mapFirebaseError(error);
     return NextResponse.json(
       { error: mappedError.message || "Erro interno ao buscar conteúdos relacionados." },

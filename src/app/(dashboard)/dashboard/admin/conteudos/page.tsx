@@ -44,8 +44,27 @@ export default function KnowledgeItemsAdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatus | "all">("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function handleReprocessEmbeddings() {
+    setIsReprocessing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/embeddings/reprocess", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao conciliar embeddings.");
+      }
+      alert(`Sincronização concluída! Itens reprocessados: ${data.processedCount}`);
+      await refresh();
+    } catch (err: any) {
+      setError(err.message || "Erro na conciliação de embeddings.");
+    } finally {
+      setIsReprocessing(false);
+    }
+  }
 
   async function refresh() {
     setIsLoading(true);
@@ -93,9 +112,20 @@ export default function KnowledgeItemsAdminPage() {
         title="Conteúdos"
         description="Fichas da base de conhecimento clínica."
         actions={
-          <Link href="/dashboard/admin/conteudos/novo">
-            <Button>Novo conteúdo</Button>
-          </Link>
+          <div className="flex gap-2">
+            {isAdmin && (
+              <Button
+                variant="secondary"
+                onClick={handleReprocessEmbeddings}
+                disabled={isReprocessing}
+              >
+                {isReprocessing ? "Sincronizando..." : "Sincronizar Embeddings"}
+              </Button>
+            )}
+            <Link href="/dashboard/admin/conteudos/novo">
+              <Button>Novo conteúdo</Button>
+            </Link>
+          </div>
         }
       />
 
