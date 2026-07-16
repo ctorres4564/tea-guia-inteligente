@@ -202,8 +202,11 @@ export async function POST(request: NextRequest) {
       try {
         const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.embedContent({
-          model: "text-embedding-004",
+          model: "gemini-embedding-2",
           contents: message.trim(),
+          config: {
+            outputDimensionality: 768,
+          },
         });
 
         if (!response.embeddings?.[0]?.values) {
@@ -246,7 +249,10 @@ export async function POST(request: NextRequest) {
         const distance = data.searchDistance ?? 1.0;
         const similarity = 1 - distance;
 
-        const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...data });
+        const dataToValidate = { ...data };
+        delete dataToValidate.embedding;
+
+        const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...dataToValidate });
         if (!parsed.success) return null;
 
         return {

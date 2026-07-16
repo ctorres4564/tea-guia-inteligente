@@ -138,13 +138,15 @@ export async function POST(request: NextRequest) {
         const distance = data.searchDistance ?? 1.0;
         const similarity = 1 - distance; // Similaridade de cosseno: 1 = idênticos, 0 = opostos/ortogonais
 
-        const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...data });
+        // Remove o VectorValue do Firestore antes de validar para não quebrar a tipagem do Zod
+        const dataToValidate = { ...data };
+        delete dataToValidate.embedding;
+
+        const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...dataToValidate });
         if (!parsed.success) return null;
 
         const item = parsed.data;
-        // Remove a propriedade embedding da resposta enviada via JSON
         const cleanItem = { ...item };
-        delete (cleanItem as any).embedding;
 
         return {
           ...cleanItem,

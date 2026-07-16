@@ -88,10 +88,13 @@ async function main() {
 
   for (const docSnap of snapshot.docs) {
     const data = docSnap.data();
-    const hasEmbedding = data.embedding && Array.isArray(data.embedding.values) && data.embedding.values.length === 768;
+    const hasEmbedding = data.embedding && 
+                         Array.isArray(data.embedding.values) && 
+                         data.embedding.values.length === 768 && 
+                         data.embeddingVersion === 1;
 
     if (hasEmbedding) {
-      console.log(`[-] Pulando: "${data.title}" (já possui embedding válido)`);
+      console.log(`[-] Pulando: "${data.title}" (já possui embedding versão 1 gerado pelo gemini-embedding-2)`);
       continue;
     }
 
@@ -111,8 +114,11 @@ async function main() {
     } else {
       try {
         const response = await ai.models.embedContent({
-          model: "text-embedding-004",
+          model: "gemini-embedding-2",
           contents: textToEmbed,
+          config: {
+            outputDimensionality: 768,
+          },
         });
 
         if (!response.embeddings?.[0]?.values) {
@@ -129,6 +135,7 @@ async function main() {
 
     await docSnap.ref.update({
       embedding: FieldValue.vector(embeddingValues),
+      embeddingVersion: 1,
       updatedAt: FieldValue.serverTimestamp(),
     });
 

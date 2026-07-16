@@ -65,7 +65,11 @@ export async function GET(_request: NextRequest) {
 
       const results: RecommendedItem[] = recentSnapshot.docs
         .map((docSnap) => {
-          const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          const dataToValidate = { ...data };
+          delete dataToValidate.embedding;
+
+          const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...dataToValidate });
           if (!parsed.success) return null;
           const clean = { ...parsed.data };
           delete (clean as any).embedding;
@@ -124,8 +128,11 @@ export async function GET(_request: NextRequest) {
       } else {
         try {
           const embedRes = await ai.models.embedContent({
-            model: "text-embedding-004",
+            model: "gemini-embedding-2",
             contents: q,
+            config: {
+              outputDimensionality: 768,
+            },
           });
           if (!embedRes.embeddings?.[0]?.values) {
             throw new Error("Formato de resposta de embedding inválido.");
@@ -159,7 +166,10 @@ export async function GET(_request: NextRequest) {
           const distance = data.searchDistance ?? 1.0;
           const similarity = 1 - distance;
 
-          const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...data });
+          const dataToValidate = { ...data };
+          delete dataToValidate.embedding;
+
+          const parsed = knowledgeItemSchema.safeParse({ id: docSnap.id, ...dataToValidate });
           if (!parsed.success) return null;
 
           const item = parsed.data;
