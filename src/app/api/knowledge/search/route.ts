@@ -79,8 +79,11 @@ export async function POST(request: NextRequest) {
       try {
         const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.embedContent({
-          model: "text-embedding-004",
+          model: "gemini-embedding-2",
           contents: q.trim(),
+          config: {
+            outputDimensionality: 768,
+          },
         });
 
         if (!response.embeddings?.[0]?.values) {

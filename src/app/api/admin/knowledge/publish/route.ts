@@ -160,8 +160,11 @@ async function generateAndSaveEmbedding(
     }
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.embedContent({
-      model: "text-embedding-004",
+      model: "gemini-embedding-2",
       contents: textToEmbed,
+      config: {
+        outputDimensionality: 768,
+      },
     });
     if (!response.embeddings?.[0]?.values) {
       throw new Error("A API retornou resposta de embedding inválida.");

@@ -67,8 +67,11 @@ export async function POST(_request: NextRequest) {
           throw new Error("GEMINI_API_KEY não configurada no servidor.");
         }
         const response = await ai.models.embedContent({
-          model: "text-embedding-004",
+          model: "gemini-embedding-2",
           contents: textToEmbed,
+          config: {
+            outputDimensionality: 768,
+          },
         });
         if (!response.embeddings?.[0]?.values) {
           logger.warn("Gemini retornou vetor inválido durante reprocessamento", { itemId: id });
