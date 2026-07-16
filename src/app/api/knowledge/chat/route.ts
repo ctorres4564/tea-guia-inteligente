@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
+import { createHash } from "crypto";
+
+export const dynamic = "force-dynamic";
 
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getActiveSession } from "@/lib/security/authorization";
@@ -15,33 +18,12 @@ import {
 } from "@/lib/validation/child-profile.schema";
 import { formatAgeLabel } from "@/lib/utils/age";
 import { FIRESTORE_COLLECTIONS } from "@/types/firestore";
+import { logger } from "@/lib/observability/logger";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SIMILARITY_THRESHOLD = 0.65;
-
-// Rate limit simples em memória: 20 requisições por minuto por usuário.
-// Em ambientes multi-instância (ex.: Vercel serverless) não é perfeito,
-// mas oferece proteção básica contra uso excessivo em instância única.
-// Para rate limit distribuído, migrar para Redis ou Firestore (ROADMAP).
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-
-function checkAndIncrementRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(userId);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(userId, { count: 1, windowStart: now });
-    return true;
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
+const RATE_LIMIT_CONFIG = { maxRequests: 20, windowMs: 60_000 };
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora de expiração de cache
 
 // Instrução básica de sistema para blindagem do LLM e disclaimer clínico
 const SYSTEM_INSTRUCTION_BASE = `Você é o assistente virtual especializado do aplicativo "TEA Guia Inteligente".
@@ -133,6 +115,7 @@ type GeminiContent = {
 };
 
 export async function POST(request: NextRequest) {
+  let userId = "unknown";
   try {
     // 1. Valida autenticação e conta ativa no servidor
     const activeSession = await getActiveSession();
@@ -143,9 +126,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1b. Rate limit: 20 requisições por minuto por usuário
+    // 1b. Rate limit centralizado: 20 requisições por minuto por usuário
     const { sessionUser } = activeSession;
-    if (!checkAndIncrementRateLimit(sessionUser.uid)) {
+    userId = sessionUser.uid;
+    const rateLimitRes = checkRateLimit(`chat:${userId}`, RATE_LIMIT_CONFIG);
+    if (!rateLimitRes.success) {
+      logger.warn("Chat rate limit exceeded", { userId: sessionUser.uid });
       return NextResponse.json(
         { error: "Limite de requisições excedido. Aguarde 1 minuto antes de enviar uma nova mensagem." },
         { status: 429 }
@@ -162,6 +148,41 @@ export async function POST(request: NextRequest) {
       );
     }
     const { message, history, childId } = parsed.data;
+
+    // 2b. Verifica cache de respostas RAG no Firestore (Isolamento por conta do usuário)
+    const queryHash = createHash("sha256")
+      .update(`${message.trim().toLowerCase()}_${childId ?? ""}_${sessionUser.uid}`)
+      .digest("hex");
+
+    const db = getAdminFirestore();
+    const cacheSnap = await db.collection("chatResponseCache").doc(queryHash).get();
+    if (cacheSnap.exists) {
+      const cacheData = cacheSnap.data();
+      const createdAt = cacheData?.createdAt?.toDate();
+      if (cacheData && createdAt && Date.now() - createdAt.getTime() < CACHE_TTL_MS) {
+        logger.info("Chat cache hit", { userId: sessionUser.uid, queryHash });
+        const responseText = cacheData.response as string;
+        const sources = cacheData.sources || [];
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            const chunks = responseText.split(" ");
+            for (const chunk of chunks) {
+              controller.enqueue(encoder.encode(chunk + " "));
+              await new Promise((resolve) => setTimeout(resolve, 30));
+            }
+            controller.close();
+          },
+        });
+
+        const headers = new Headers();
+        headers.set("Content-Type", "text/plain; charset=utf-8");
+        headers.set("x-sources-metadata", JSON.stringify(sources));
+        return new Response(stream, { headers });
+      }
+    }
+
+    logger.info("Chat cache miss. Generating new response via Gemini.", { userId: sessionUser.uid, queryHash });
 
     // 3. RAG - Passo 1: Gerar o embedding da pergunta atual
     let queryEmbedding: number[];
@@ -202,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     // RAG - Passo 2: Busca artigos semelhantes no Firestore
-    const db = getAdminFirestore();
+
     const queryBase = db
       .collection("knowledgeItems")
       .where("reviewStatus", "==", "published")
@@ -286,6 +307,15 @@ export async function POST(request: NextRequest) {
         ? `[DISCLAIMER EDUCACIONAL: Este conteúdo é informativo.]\n\nBaseado no artigo "${firstItem.title}", a ecolalia ou sintomas relacionados referem-se a padrões comportamentais comuns. Como orientações práticas, reduza estímulos e ofereça apoio à comunicação. Se precisar de mais assistência, procure um profissional habilitado.`
         : "Não encontrei informações validadas sobre este assunto específico na base clínica do guia. Recomendo consultar um pediatra ou especialista no neurodesenvolvimento.";
 
+      // Grava no cache de forma assíncrona
+      db.collection("chatResponseCache").doc(queryHash).set({
+        userId: sessionUser.uid,
+        queryHash,
+        response: mockResponse,
+        sources,
+        createdAt: FieldValue.serverTimestamp(),
+      }).catch(err => logger.warn("Failed to write mock response to cache", { userId: sessionUser.uid }, err));
+
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
@@ -324,13 +354,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Timeout efetivo de 30 segundos: usa flag streamClosed + setTimeout que
-    // fecha o controller diretamente. Diferente do AbortController anterior
-    // (que apenas sinalizava mas não interrompia o loop for-await), aqui o
-    // timeout fecha o ReadableStreamDefaultController, o que encerra o stream
-    // imediatamente para o cliente.
+    // fecha o controller diretamente.
     const STREAM_TIMEOUT_MS = 30_000;
     const encoder = new TextEncoder();
     let streamClosed = false;
+    let fullResponse = "";
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -343,21 +371,36 @@ export async function POST(request: NextRequest) {
               );
               controller.close();
             } catch {
-              // controller pode já ter sido fechado em uma condição de corrida
+              // controller pode já ter sido fechado
             }
           }
         }, STREAM_TIMEOUT_MS);
 
         try {
           for await (const chunk of responseStream) {
-            // Se o timeout disparou e fechou o controller, para imediatamente
             if (streamClosed) break;
             if (chunk.text) {
+              fullResponse += chunk.text;
               controller.enqueue(encoder.encode(chunk.text));
             }
           }
+
+          // Se a resposta completou sem timeout, persiste no cache
+          if (!streamClosed && fullResponse.trim().length > 0) {
+            db.collection("chatResponseCache").doc(queryHash).set({
+              userId: sessionUser.uid,
+              queryHash,
+              response: fullResponse,
+              sources,
+              createdAt: FieldValue.serverTimestamp(),
+            }).then(() => {
+              logger.info("Chat cache populated", { userId: sessionUser.uid, queryHash });
+            }).catch(err => {
+              logger.warn("Failed to write response to cache", { userId: sessionUser.uid }, err);
+            });
+          }
         } catch (err) {
-          console.error("Erro durante o processamento do stream do Gemini:", err);
+          logger.error("Erro durante o processamento do stream do Gemini", { userId: sessionUser.uid }, err);
           if (!streamClosed) {
             try {
               controller.enqueue(encoder.encode("\n[ERRO: Conexão interrompida com o serviço de IA.]"));
@@ -385,7 +428,7 @@ export async function POST(request: NextRequest) {
 
     return new Response(stream, { headers });
   } catch (error) {
-    console.error("Erro no Route Handler de RAG:", error);
+    logger.error("Erro no Route Handler de RAG", { userId }, error);
     const mappedError = mapFirebaseError(error);
     return NextResponse.json(
       { error: mappedError.message || "Erro interno ao processar a resposta do assistente." },

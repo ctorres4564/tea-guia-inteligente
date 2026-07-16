@@ -11,4 +11,5 @@ export const FIRESTORE_COLLECTIONS = {
   history: "history",
   children: "children",
   notifications: "notifications",
+  chatResponseCache: "chatResponseCache",
 } as const;

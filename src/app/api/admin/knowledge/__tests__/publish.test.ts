@@ -104,6 +104,14 @@ describe("POST /api/admin/knowledge/publish — fluxo editorial", () => {
     expect(mockDocRef.update).toHaveBeenCalledWith(
       expect.objectContaining({
         reviewStatus: "published",
+        embeddingVersion: 0,
+      })
+    );
+
+    // Aguarda o processamento em background terminar
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(mockDocRef.update).toHaveBeenCalledWith(
+      expect.objectContaining({
         embeddingVersion: 1,
       })
     );

@@ -346,6 +346,63 @@ async function main() {
       );
     });
 
+    // =====================================================================
+    // Suíte 6: Cache de Respostas do Chat (chatResponseCache)
+    // =====================================================================
+    console.log("\n⚡ chatResponseCache — Isolamento por usuário");
+
+    await test("usuário A pode ler seu próprio cache de chat", async () => {
+      // Cria primeiro sem regras de segurança (withSecurityRulesDisabled)
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), `chatResponseCache/cache-a`), {
+          userId: USER_A_UID,
+          queryHash: "hash-a",
+          response: "Resposta A",
+          createdAt: new Date(),
+        });
+      });
+
+      await assertSucceeds(
+        getDoc(doc(userADb, "chatResponseCache/cache-a"))
+      );
+    });
+
+    await test("usuário B não pode ler cache do usuário A", async () => {
+      await assertFails(
+        getDoc(doc(userBDb, "chatResponseCache/cache-a"))
+      );
+    });
+
+    await test("usuário A pode criar seu próprio cache de chat", async () => {
+      await assertSucceeds(
+        setDoc(doc(userADb, "chatResponseCache/cache-new-a"), {
+          userId: USER_A_UID,
+          queryHash: "hash-new",
+          response: "Novas respostas",
+          createdAt: new Date(),
+        })
+      );
+    });
+
+    await test("usuário A não pode criar cache com userId do usuário B", async () => {
+      await assertFails(
+        setDoc(doc(userADb, "chatResponseCache/cache-bad-uid"), {
+          userId: USER_B_UID,
+          queryHash: "hash-bad",
+          response: "Invasão",
+          createdAt: new Date(),
+        })
+      );
+    });
+
+    await test("cache do chat é imutável após criação", async () => {
+      await assertFails(
+        updateDoc(doc(userADb, "chatResponseCache/cache-a"), {
+          response: "Modificada",
+        })
+      );
+    });
+
   } catch (err) {
     console.error("\n❌ Erro ao inicializar o ambiente de testes:", err.message);
     console.error("   Verifique se o Firebase Emulator está rodando:");

@@ -5,6 +5,16 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.6.0] - 2026-07-16
+
+### Adicionado
+- **Cache RAG de Respostas do Chat** (Fase 9): Coleção `chatResponseCache` no Firestore armazena e recupera respostas do Gemini com base no hash SHA-256 da pergunta, ID da criança e UID do usuário, garantindo privacidade estrita e cota poupada.
+- **Processamento Assíncrono de Embeddings**: Desacoplamento da geração de embeddings da rota de publicação (`/api/admin/knowledge/publish`), respondendo instantaneamente com `embeddingVersion: 0`.
+- **Rota de Conciliação**: Endpoint `/api/admin/embeddings/reprocess` permitindo a reprocessadores em lote (administradores) gerar vetores para artigos com embedding pendente.
+- **Rate Limiting Centralizado**: Utilitário em `src/lib/security/rate-limit.ts` centralizado em memória que limita requisições no chat (20 req/min), busca (40 req/min) e recomendações (40 req/min).
+- **Logger Estruturado com LGPD**: Utilitário em `src/lib/observability/logger.ts` emitindo logs JSON de linha única em produção e mascarando recursivamente qualquer PII ou dado sensível (como nome, birthDate, e-mail).
+- **Documentação de Decisão**: `docs/decisions/ADR-007-scalability-observability.md`.
+
 ## [0.5.0] - 2026-07-16
 
 ### Adicionado

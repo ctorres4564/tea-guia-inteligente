@@ -320,6 +320,28 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ------------------------------------------------------------------
+    // chatResponseCache/{cacheId}  (Fase 9)
+    //
+    // Cache de respostas do assistente de IA.
+    // Isolamento absoluto: cada usuário só pode ler/escrever seu próprio cache.
+    // Validação estrutural: exige userId coincidente, queryHash, response, e createdAt.
+    // ------------------------------------------------------------------
+    match /chatResponseCache/{cacheId} {
+      allow read: if isSignedIn()
+        && isActiveAccount()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isActiveAccount()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.queryHash is string
+        && request.resource.data.response is string
+        && request.resource.data.createdAt is timestamp;
+
+      allow update, delete: if false;
+    }
+
     // Bloqueio padrão: qualquer coleção não listada explicitamente é negada.
     match /{document=**} {
       allow read, write: if false;

@@ -9,8 +9,11 @@ import { getActiveSession } from "@/lib/security/authorization";
 import { mapFirebaseError } from "@/lib/errors/firebase-errors";
 import { knowledgeItemSchema, type KnowledgeItem } from "@/lib/validation/knowledge.schema";
 import { calculateAge, formatAgeLabel } from "@/lib/utils/age";
+import { logger } from "@/lib/observability/logger";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SIMILARITY_THRESHOLD = 0.55;
+const RATE_LIMIT_CONFIG = { maxRequests: 40, windowMs: 60_000 };
 
 interface RecommendedItem extends Omit<KnowledgeItem, "embedding"> {
   similarity: number;
@@ -18,6 +21,7 @@ interface RecommendedItem extends Omit<KnowledgeItem, "embedding"> {
 }
 
 export async function GET(_request: NextRequest) {
+  let userId = "unknown";
   try {
     // 1. Valida autenticação
     const activeSession = await getActiveSession();
@@ -28,7 +32,18 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    const userId = activeSession.sessionUser.uid;
+    // 1b. Rate limit centralizado (40 requisições/min)
+    const { sessionUser } = activeSession;
+    userId = sessionUser.uid;
+    const rateLimitRes = checkRateLimit(`recommendations:${userId}`, RATE_LIMIT_CONFIG);
+    if (!rateLimitRes.success) {
+      logger.warn("Recommendations rate limit exceeded", { userId: sessionUser.uid });
+      return NextResponse.json(
+        { error: "Limite de requisições excedido. Aguarde 1 minuto." },
+        { status: 429 }
+      );
+    }
+
     const db = getAdminFirestore();
 
     // 2. Busca perfis de crianças cadastradas
@@ -218,7 +233,7 @@ export async function GET(_request: NextRequest) {
       hasProfile: true
     });
   } catch (error) {
-    console.error("Erro ao obter recomendações personalizadas:", error);
+    logger.error("Erro ao obter recomendações personalizadas", { userId }, error);
     const mappedError = mapFirebaseError(error);
     return NextResponse.json(
       { error: mappedError.message || "Erro interno ao processar recomendações." },

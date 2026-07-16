@@ -101,12 +101,13 @@ conhecimento completa também permanece fora de escopo.
 - Painel `DashboardInsights` no dashboard inicial, reunindo recomendações
   e novidades.
 
-## Fase 9 — Escalabilidade e Observabilidade
+## Fase 9 — Escalabilidade e Observabilidade ✅
 
-- Cache de respostas frequentes
-- Filas para processamento assíncrono (ex.: geração de embeddings)
-- Monitoramento e observabilidade (logs estruturados, métricas, alertas)
-- Rate limiting
+- **Cache de respostas frequentes do Chat RAG**: Implementada a coleção `chatResponseCache` no Firestore, com isolamento absoluto por UID de usuário para privacidade e TTL de 1 hora.
+- **Processamento assíncrono de embeddings**: A rota `/api/admin/knowledge/publish` publica imediatamente com `embeddingVersion: 0` e delega a geração do embedding para segundo plano, evitando timeouts.
+- **Rota de Conciliação**: Adicionado endpoint `/api/admin/embeddings/reprocess` que processa em lote embeddings pendentes.
+- **Rate limiting centralizado**: Utilitário em `src/lib/security/rate-limit.ts` aplicado nas rotas `/api/knowledge/chat`, `/api/knowledge/search` e `/api/knowledge/recommendations`.
+- **Monitoramento e Observabilidade**: Logger estruturado em `src/lib/observability/logger.ts` gerando logs JSON estruturados de linha única em produção e mascarando automaticamente dados pessoais/PII (em conformidade com LGPD).
 
 ## Fora de escopo permanente (a menos que redefinido em PRD futuro)
 

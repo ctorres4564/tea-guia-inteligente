@@ -5,6 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getAuthorizedSession, REVIEWER_ROLES } from "@/lib/security/authorization";
 import { mapFirebaseError } from "@/lib/errors/firebase-errors";
+import { logger } from "@/lib/observability/logger";
 
 /**
  * Route Handler para publicação de conteúdos clínicos.
@@ -77,82 +78,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Concatena os textos clínicos para a geração de embeddings
-    const title = data.title || "";
-    const summary = data.summary || "";
-    const content = data.content || "";
-    const tags = Array.isArray(data.tags) ? data.tags.join(", ") : "";
-    const textToEmbed = `${title}\n${summary}\n${content}\nTags: ${tags}`;
-
-    // 5. Gera o vetor de embeddings (768 dimensões)
-    let embedding: number[];
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
-      // Mock de vetor para desenvolvimento/testes locais sem chave de API do Gemini
-      embedding = new Array(768).fill(0).map(() => Math.random() * 0.1);
-    } else {
-      if (!apiKey) {
-        return NextResponse.json(
-          { error: "Chave GEMINI_API_KEY não configurada no servidor." },
-          { status: 500 }
-        );
-      }
-
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.embedContent({
-          model: "text-embedding-004",
-          contents: textToEmbed,
-        });
-
-        if (!response.embeddings?.[0]?.values) {
-          return NextResponse.json(
-            { error: "A API do Gemini retornou uma resposta de embedding inválida." },
-            { status: 502 }
-          );
-        }
-
-        embedding = response.embeddings[0].values;
-      } catch (err) {
-        console.error("Erro na chamada à API do Gemini:", err);
-        return NextResponse.json(
-          { error: "Falha na comunicação com o serviço de embeddings do Gemini." },
-          { status: 502 }
-        );
-      }
-    }
-
-    // 6. Atualiza o documento no Firestore com status de publicado e o vetor
+    // 5. Atualiza o documento no Firestore com status de publicado instantaneamente (sem o vetor ainda)
     await docRef.update({
       reviewStatus: "published",
       reviewedBy: sessionUser.uid,
       publishedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-      embedding: FieldValue.vector(embedding),
-      // Marca o embedding como atualizado em relação ao conteúdo publicado.
-      // Se o conteúdo for editado após a publicação, updateKnowledgeItemContent
-      // grava embeddingVersion: 0 para sinalizar que o vetor está desatualizado.
-      embeddingVersion: 1,
+      // Marca o embedding como desatualizado (0) para processamento em background
+      embeddingVersion: 0,
     });
 
-    // 7. Registra uma notificação de novos conteúdos no sistema
+    // 6. Registra uma notificação de novos conteúdos no sistema
     await db.collection("notifications").add({
       type: "new_content",
       title: "Novo artigo clínico disponível!",
-      summary: title,
+      summary: data.summary || "",
       contentId: id,
       contentSlug: data.slug || "",
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    // 7. Dispara a geração do embedding em background (assíncrono)
+    generateAndSaveEmbedding(id, data.title || "", data.summary || "", data.content || "", data.tags || []).catch((err) => {
+      logger.error("Falha no processamento de embedding assíncrono", { itemId: id }, err);
+    });
+
+    logger.info("Artigo clínico publicado com sucesso. Processando embedding em background.", { itemId: id });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Erro no Route Handler de publicação:", error);
+    logger.error("Erro no Route Handler de publicação", { userId: "unknown" }, error);
     const mappedError = mapFirebaseError(error);
     return NextResponse.json(
       { error: mappedError.message || "Erro interno no servidor ao processar publicação." },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Função de segundo plano para processamento assíncrono de embeddings.
+ */
+async function generateAndSaveEmbedding(
+  id: string,
+  title: string,
+  summary: string,
+  content: string,
+  tags: string[]
+): Promise<void> {
+  const tagsStr = Array.isArray(tags) ? tags.join(", ") : "";
+  const textToEmbed = `${title}\n${summary}\n${content}\nTags: ${tagsStr}`;
+
+  let embedding: number[];
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+    embedding = new Array(768).fill(0).map(() => Math.random() * 0.1);
+  } else {
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY não configurada no servidor.");
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.embedContent({
+      model: "text-embedding-004",
+      contents: textToEmbed,
+    });
+    if (!response.embeddings?.[0]?.values) {
+      throw new Error("A API retornou resposta de embedding inválida.");
+    }
+    embedding = response.embeddings[0].values;
+  }
+
+  const db = getAdminFirestore();
+  await db.collection("knowledgeItems").doc(id).update({
+    embedding: FieldValue.vector(embedding),
+    embeddingVersion: 1,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  logger.info("Embedding assíncrono gerado e gravado com sucesso", { itemId: id });
 }

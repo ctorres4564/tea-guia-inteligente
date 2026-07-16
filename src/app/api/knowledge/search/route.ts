@@ -2,25 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
 
+export const dynamic = "force-dynamic";
+
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getActiveSession } from "@/lib/security/authorization";
 import { mapFirebaseError } from "@/lib/errors/firebase-errors";
 import { knowledgeItemSchema } from "@/lib/validation/knowledge.schema";
+import { logger } from "@/lib/observability/logger";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const SIMILARITY_THRESHOLD = 0.65; // Similaridade de cosseno mínima aceitável (equivale a distância máxima de 0.35)
+const RATE_LIMIT_CONFIG = { maxRequests: 40, windowMs: 60_000 };
 
 /**
  * Route Handler para busca semântica de fichas clínicas da base de conhecimento.
  * Apenas usuários autenticados e ativos podem pesquisar.
- *
- * Aceita payload JSON com:
- * - q: termo de pesquisa (string, obrigatório)
- * - categoryId: ID da categoria para filtrar (string, opcional)
- * - targetAudience: público-alvo para filtrar (string, opcional)
- * - ageRange: faixa etária para filtrar (string, opcional)
- * - limit: número máximo de resultados (number, opcional, default 10)
  */
 export async function POST(request: NextRequest) {
+  let userId = "unknown";
   try {
     // 1. Valida autenticação e conta ativa no servidor
     const activeSession = await getActiveSession();
@@ -28,6 +27,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Acesso negado. É necessário estar autenticado e com conta ativa para realizar buscas." },
         { status: 401 }
+      );
+    }
+
+    // 1b. Rate limit centralizado (40 requisições/min)
+    const { sessionUser } = activeSession;
+    userId = sessionUser.uid;
+    const rateLimitRes = checkRateLimit(`search:${userId}`, RATE_LIMIT_CONFIG);
+    if (!rateLimitRes.success) {
+      logger.warn("Search rate limit exceeded", { userId: sessionUser.uid });
+      return NextResponse.json(
+        { error: "Limite de requisições excedido. Aguarde 1 minuto." },
+        { status: 429 }
       );
     }
 
@@ -167,7 +178,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error) {
-    console.error("Erro no Route Handler de busca semântica:", error);
+    logger.error("Erro no Route Handler de busca semântica", { userId }, error);
     const mappedError = mapFirebaseError(error);
     return NextResponse.json(
       { error: mappedError.message || "Erro interno ao processar a busca." },
