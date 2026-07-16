@@ -152,35 +152,43 @@ export async function POST(request: NextRequest) {
     const { message, history, childId } = parsed.data;
 
     // 2b. Verifica cache de respostas RAG no Firestore (Isolamento por conta do usuário)
+    // O cache é desativado em ambiente de desenvolvimento ou emulador para evitar respostas mockadas repetitivas
+    const isEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true";
+    const isDev = process.env.NODE_ENV === "development";
+    const useCache = !isEmulator && !isDev;
+
     const queryHash = createHash("sha256")
       .update(`${message.trim().toLowerCase()}_${childId ?? ""}_${sessionUser.uid}`)
       .digest("hex");
 
     const db = getAdminFirestore();
-    const cacheSnap = await db.collection("chatResponseCache").doc(queryHash).get();
-    if (cacheSnap.exists) {
-      const cacheData = cacheSnap.data();
-      const createdAt = cacheData?.createdAt?.toDate();
-      if (cacheData && createdAt && Date.now() - createdAt.getTime() < CACHE_TTL_MS) {
-        logger.info("Chat cache hit", { userId: sessionUser.uid, queryHash });
-        const responseText = cacheData.response as string;
-        const sources = cacheData.sources || [];
-        const encoder = new TextEncoder();
-        const stream = new ReadableStream({
-          async start(controller) {
-            const chunks = responseText.split(" ");
-            for (const chunk of chunks) {
-              controller.enqueue(encoder.encode(chunk + " "));
-              await new Promise((resolve) => setTimeout(resolve, 30));
-            }
-            controller.close();
-          },
-        });
 
-        const headers = new Headers();
-        headers.set("Content-Type", "text/plain; charset=utf-8");
-        headers.set("x-sources-metadata", JSON.stringify(sources));
-        return new Response(stream, { headers });
+    if (useCache) {
+      const cacheSnap = await db.collection("chatResponseCache").doc(queryHash).get();
+      if (cacheSnap.exists) {
+        const cacheData = cacheSnap.data();
+        const createdAt = cacheData?.createdAt?.toDate();
+        if (cacheData && createdAt && Date.now() - createdAt.getTime() < CACHE_TTL_MS) {
+          logger.info("Chat cache hit", { userId: sessionUser.uid, queryHash });
+          const responseText = cacheData.response as string;
+          const sources = cacheData.sources || [];
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            async start(controller) {
+              const chunks = responseText.split(" ");
+              for (const chunk of chunks) {
+                controller.enqueue(encoder.encode(chunk + " "));
+                await new Promise((resolve) => setTimeout(resolve, 30));
+              }
+              controller.close();
+            },
+          });
+
+          const headers = new Headers();
+          headers.set("Content-Type", "text/plain; charset=utf-8");
+          headers.set("x-sources-metadata", JSON.stringify(sources));
+          return new Response(stream, { headers });
+        }
       }
     }
 
