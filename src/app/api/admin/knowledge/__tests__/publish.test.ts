@@ -34,6 +34,14 @@ vi.mock("@google/genai", () => ({
   })),
 }));
 
+// waitUntil real da Vercel só tem efeito dentro do runtime de uma Vercel
+// Function. Em testes, mockamos como um no-op que apenas "observa" a promise
+// (sem alterar o comportamento fire-and-forget já coberto pelo teste abaixo,
+// que aguarda um pequeno delay para a promise de embedding resolver).
+vi.mock("@vercel/functions", () => ({
+  waitUntil: vi.fn(),
+}));
+
 // ---------- Helpers ----------
 
 function makeRequest(body: object): NextRequest {

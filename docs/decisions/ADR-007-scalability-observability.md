@@ -26,8 +26,8 @@ Aprovado
 ### 3. Processamento Assíncrono de Embeddings e Resiliência
 - Desacoplamos a geração de embeddings da transação síncrona de publicação em `/api/admin/knowledge/publish`.
 - A API administrativa realiza o update no documento definindo `reviewStatus: 'published'` e `embeddingVersion: 0` (pendente) e responde instantaneamente com `200 OK` ao usuário reviewer.
-- **Mitigação Serverless (Vercel)**: Para garantir que a Promise não seja interrompida precocemente pelo runtime da Vercel após a resposta HTTP, utilizamos `request.waitUntil` ou o objeto de contexto do Next.js para manter o processo em background vivo.
-- **Conciliação e Interface**: Criamos a rota de conciliação administrativa `/api/admin/embeddings/reprocess` que permite reprocessar em lotes (limite de 10 itens por vez) quaisquer publicações com embeddings pendentes (`embeddingVersion == 0`). Adicionalmente, incluímos um botão de **"Sincronizar Embeddings"** na interface do painel do administrador para permitir a conciliação manual rápida.
+- **Mitigação Serverless (Vercel)**: usamos `waitUntil` do pacote oficial `@vercel/functions` (não uma propriedade de `NextRequest` — essa API não existe em `next/server`; uma tentativa anterior desta ADR descrevia `request.waitUntil`, que nunca chega a ser chamada em runtime algum e foi corrigida) para estender o ciclo de vida da função serverless até a promise de geração do embedding resolver, mesmo após a resposta HTTP já ter sido enviada. Fora do runtime de uma Vercel Function (dev local, testes, outros provedores de hospedagem), a chamada lança e cai em um fallback que apenas registra um aviso — a promise já disparada continua rodando de forma best-effort, sem garantia de conclusão nesses ambientes.
+- **Conciliação e Interface**: Criamos a rota de conciliação administrativa `/api/admin/embeddings/reprocess` que permite reprocessar em lotes (limite de 10 itens por vez) quaisquer publicações com embeddings pendentes (`embeddingVersion == 0`). Adicionalmente, incluímos um botão de **"Sincronizar Embeddings"** na interface do painel do administrador para permitir a conciliação manual rápida — é a rede de segurança real para qualquer cenário em que o `waitUntil` não se aplique (fora da Vercel) ou a promise falhe silenciosamente.
 
 ### 4. Telemetria com Logs Estruturados
 - Criamos a biblioteca `src/lib/observability/logger.ts` contendo suporte aos níveis `INFO`, `WARN` e `ERROR`.
@@ -40,3 +40,17 @@ Aprovado
 - Redução expressiva no consumo de tokens e custos de chamada do Gemini graças ao cache de 1 hora.
 - Garantia de conformidade com LGPD e privacidade com o cache do chat isolado por UID do usuário e mascaramento de PII em logs.
 - Facilidade de auditoria de performance através dos logs estruturados.
+- Nova dependência de produção: `@vercel/functions` (necessária para `waitUntil`). Requer `npm install` local para atualizar `package.json`/`package-lock.json` antes do próximo build.
+
+## Nota de correção (auditoria pós-implementação)
+
+A primeira versão desta ADR descrevia o uso de `request.waitUntil` como
+mitigação serverless. Essa API não existe em `NextRequest` (Route Handlers do
+Next.js sobre runtime Node.js) — o código correspondente nunca era executado
+em nenhum ambiente, deixando a geração de embedding sem qualquer extensão de
+ciclo de vida pós-resposta (risco real de artigos publicados ficarem presos
+em `embeddingVersion: 0` em produção na Vercel). Corrigido para usar
+`waitUntil` importado de `@vercel/functions`, com fallback documentado acima
+para ambientes fora da Vercel. O botão "Sincronizar Embeddings" no painel
+administrativo continua sendo a rede de segurança operacional independente
+desta mitigação.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
+import { waitUntil } from "@vercel/functions";
 
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getAuthorizedSession, REVIEWER_ROLES } from "@/lib/security/authorization";
@@ -98,15 +99,29 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    // 7. Dispara a geração do embedding em background (assíncrono)
+    // 7. Dispara a geração do embedding em background (assíncrono).
+    // A promise já começa a rodar imediatamente (fire-and-forget) — o que
+    // segue é só a extensão do ciclo de vida da função serverless para lhe
+    // dar chance de terminar após a resposta HTTP já ter sido enviada.
     const embeddingPromise = generateAndSaveEmbedding(id, data.title || "", data.summary || "", data.content || "", data.tags || []).catch((err) => {
       logger.error("Falha no processamento de embedding assíncrono", { itemId: id }, err);
     });
 
-    if (typeof (request as any).waitUntil === "function") {
-      (request as any).waitUntil(embeddingPromise);
-    } else if (typeof (request as any).context?.waitUntil === "function") {
-      (request as any).context.waitUntil(embeddingPromise);
+    try {
+      // waitUntil real da Vercel (@vercel/functions): mantém a função
+      // serverless viva até a promise resolver, mesmo após a resposta já
+      // ter sido enviada ao cliente. Só tem efeito quando executado dentro
+      // do runtime de uma Vercel Function; fora desse contexto (dev local,
+      // testes, outros provedores) lança e caímos no catch abaixo — a
+      // promise já disparada continua rodando de forma best-effort, sem
+      // garantia de conclusão (mesma limitação que a rota de conciliação
+      // manual `/api/admin/embeddings/reprocess` existe para cobrir).
+      waitUntil(embeddingPromise);
+    } catch {
+      logger.warn(
+        "waitUntil indisponível neste ambiente de execução (fora de uma Vercel Function); embedding segue em background sem garantia de conclusão pós-resposta.",
+        { itemId: id }
+      );
     }
 
     logger.info("Artigo clínico publicado com sucesso. Processando embedding em background.", { itemId: id });

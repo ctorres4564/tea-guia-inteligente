@@ -5,6 +5,21 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [0.6.1] - 2026-07-16
+
+### Corrigido
+- `/api/admin/knowledge/publish` (Fase 9): a mitigação serverless para a
+  geração assíncrona de embedding usava `request.waitUntil`, uma API que
+  não existe em `NextRequest` — o código nunca era executado em runtime
+  algum, deixando o processamento em background sem qualquer garantia de
+  conclusão pós-resposta. Corrigido para usar `waitUntil` real, importado
+  do pacote `@vercel/functions`, com fallback (log de aviso) para
+  ambientes fora do runtime de uma Vercel Function. Nova dependência de
+  produção: `@vercel/functions` — requer `npm install` antes do próximo
+  build.
+- `docs/decisions/ADR-007-scalability-observability.md`: nota de correção
+  registrando o erro anterior e a mitigação real aplicada.
+
 ## [0.6.0] - 2026-07-16
 
 ### Adicionado
